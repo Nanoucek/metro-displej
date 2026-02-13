@@ -397,54 +397,32 @@
     }
 
     async function loadDepartures() {
-      try {
-        const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
-        const json = await res.json();
+  try {
+    const res = await fetch(
+      "/api/departures?name=Pražského%20povst%C3%A1n%C3%AD",
+      { cache: "no-store" }
+    );
+    const json = await res.json();
 
-        // ✅ tady je hlavní oprava:
-        const allDepartures = extractAllDepartures(json);
+    // departures ze všech stops
+    const allDepartures = (json?.stops || []).flatMap(s => s?.departures || []);
 
+    // Metro C poznáme podle směru
+    const hajeList = allDepartures.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+    const letList  = allDepartures.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
 
-        // ===== Metro C podle směru =====
-const hajeList = allDepartures.filter(d =>
-  /háje/i.test(d?.trip?.headsign || "")
-);
+    lastHaje = hajeList[0] || null;
+    lastLet  = letList[0] || null;
+    lastHajeList = hajeList.slice(0, 3);
+    lastLetList  = letList.slice(0, 3);
 
-const letList = allDepartures.filter(d =>
-  /letňany/i.test(d?.trip?.headsign || "")
-);
-
-        
-        // ✅ směry podle headsign
-        const hajeRaw = hajeList.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-        const letRaw  = letList.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
-
-        const hajeList = sortBySoonest(hajeRaw);
-        const letList  = sortBySoonest(letRaw);
-
-        lastHaje = hajeList[0] || null;
-        lastLet  = letList[0] || null;
-        lastHajeList = hajeList.slice(0, 3);
-        lastLetList  = letList.slice(0, 3);
-
-        tickLeaveCountdowns();
-        setStatus(true, "Live data OK");
-      } catch (e) {
-        console.error(e);
-        setStatus(false, "Chyba dat / offline");
-      }
-    }
-
-    function tickLeaveCountdowns(){
-      renderBig("bigHaje", lastHaje);
-      renderBig("bigLet", lastLet);
-      renderList("listHaje", lastHajeList);
-      renderList("listLet", lastLetList);
-    }
-
-    // start
-    tickClock();
-    loadDepartures();
+    tickLeaveCountdowns();
+    setStatus(true, "Live data OK");
+  } catch (e) {
+    console.error(e);
+    setStatus(false, "Chyba dat / offline");
+  }
+}
 
     setInterval(loadDepartures, FETCH_EVERY_MS);
     setInterval(tickClock, 1000);
