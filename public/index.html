@@ -152,7 +152,7 @@
 
     .big{
       font-variant-numeric: tabular-nums;
-      font-size: 92px;
+      font-size: 86px;
       line-height: 1;
       font-weight: 800;
       letter-spacing:-2px;
@@ -160,7 +160,7 @@
     }
 
     .big small{
-      font-size: 26px;
+      font-size: 22px;
       color: var(--muted);
       font-weight: 650;
       letter-spacing:0;
@@ -218,7 +218,7 @@
 
     @media (max-width: 900px){
       .grid{ grid-template-columns: 1fr; }
-      .big{ font-size: 78px; }
+      .big{ font-size: 74px; }
     }
   </style>
 </head>
@@ -229,7 +229,7 @@
       <div class="top">
         <div class="title">
           <h1>Pražského povstání — Metro C</h1>
-          <div class="sub">Live odjezdy + odpočty • refresh každých 10 s</div>
+          <div class="sub">Doporučený odchod ze školy (chůze ~ 4 min) • sync dat každých 10 s</div>
         </div>
 
         <div class="pill" id="statusPill">
@@ -249,7 +249,7 @@
             <div class="badge" id="bLet">—</div>
           </div>
 
-          <div class="big" id="bigLet">--<small>min</small></div>
+          <div class="big" id="bigLet">--<small>Vyjdi za</small></div>
 
           <div class="mini" id="listLet">
             <div class="row"><span>Načítám…</span><span class="time">—</span></div>
@@ -265,7 +265,7 @@
             <div class="badge" id="bHaje">—</div>
           </div>
 
-          <div class="big" id="bigHaje">--<small>min</small></div>
+          <div class="big" id="bigHaje">--<small>Vyjdi za</small></div>
 
           <div class="mini" id="listHaje">
             <div class="row"><span>Načítám…</span><span class="time">—</span></div>
@@ -281,74 +281,137 @@
   </div>
 
   <script>
-function setStatus(ok, text){
-  const dot = document.getElementById("statusDot");
-  const t = document.getElementById("statusText");
-  t.textContent = text;
-  dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
-}
+    // ===== SETTINGS =====
+    const WALK_SECONDS = 4 * 60; // 4 minuty chůze (rezerva už v tom)
+    const LATE_THRESHOLD = -15;  // když leaveIn < -15s -> “Nestíháš”
+    const FETCH_EVERY_MS = 10000;
 
-function tickClock(){
-  const d = new Date();
-  document.getElementById("clock").textContent =
-    d.toLocaleTimeString("cs-CZ", { hour12:false });
-}
+    // ===== LAST KNOWN DATA (pro plynulý tick 1s) =====
+    let lastHaje = null;
+    let lastLet = null;
+    let lastHajeList = [];
+    let lastLetList = [];
 
-function renderList(elId, items){
-  const el = document.getElementById(elId);
-  if (!items.length){
-    el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
-    return;
-  }
-  el.innerHTML = items.map(d => {
-    const m = d?.departure_timestamp?.minutes ?? "--";
-    const head = d?.trip?.headsign ?? "";
-    return `<div class="row"><span>${head}</span><span class="time">${m} min</span></div>`;
-  }).join("");
-}
+    // ===== HELPERS =====
+    function fmtMMSS(totalSeconds){
+      const s = Math.max(0, Math.floor(totalSeconds));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
 
-async function loadDepartures() {
-  try {
-    const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD");
-    const json = await res.json();
+    function setStatus(ok, text){
+      const dot = document.getElementById("statusDot");
+      const t = document.getElementById("statusText");
+      t.textContent = text;
+      dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
+    }
 
-    // ✅ tady je hlavní fix:
-    const all = Array.isArray(json?.departures) ? json.departures : [];
+    function tickClock(){
+      const d = new Date();
+      document.getElementById("clock").textContent =
+        d.toLocaleTimeString("cs-CZ", { hour12:false });
+    }
 
-    // jen Metro C
-    const metroC = all.filter(d => (d?.route?.short_name || "").toUpperCase() === "C");
+    function renderBig(elId, dep){
+      const el = document.getElementById(elId);
 
-    // rozdělit podle směru
-    const hajeList = metroC.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-    const letList  = metroC.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+      const depMin = dep?.departure_timestamp?.minutes;
+      if (typeof depMin !== "number"){
+        el.innerHTML = `--<small>Vyjdi za</small>`;
+        return;
+      }
 
-    // nejbližší odjezd (první v seznamu)
-    const haje = hajeList[0];
-    const letnany = letList[0];
+      const leaveIn = depMin * 60 - WALK_SECONDS;
 
-    // velké odpočty
-    document.getElementById("bigHaje").innerHTML =
-      `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
-    document.getElementById("bigLet").innerHTML =
-      `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+      if (leaveIn < LATE_THRESHOLD) {
+        el.innerHTML = `—<small>Nestíháš</small>`;
+      } else if (leaveIn <= 0) {
+        el.innerHTML = `TEĎ<small>Vyjdi</small>`;
+      } else {
+        el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
+      }
+    }
 
-    // mini seznamy (3 nejbližší)
-    renderList("listHaje", hajeList.slice(0, 3));
-    renderList("listLet",  letList.slice(0, 3));
+    function renderList(elId, items){
+      const el = document.getElementById(elId);
 
-    setStatus(true, "Live data OK");
-  } catch (e) {
-    console.error(e);
-    setStatus(false, "Chyba dat");
-  }
-}
+      if (!items.length){
+        el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
+        return;
+      }
 
-tickClock();
-loadDepartures();
-setInterval(loadDepartures, 10000);
-setInterval(tickClock, 1000);
-</script>
+      el.innerHTML = items.map(d => {
+        const depMin = d?.departure_timestamp?.minutes;
+        const head = d?.trip?.headsign ?? "";
+
+        if (typeof depMin !== "number") {
+          return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
+        }
+
+        const leaveIn = depMin * 60 - WALK_SECONDS;
+
+        let right;
+        if (leaveIn < LATE_THRESHOLD) right = `<span class="time">Nestíháš</span>`;
+        else if (leaveIn <= 0) right = `<span class="time">Vyjdi teď</span>`;
+        else right = `<span class="time">Vyjdi za ${fmtMMSS(leaveIn)}</span>`;
+
+        return `<div class="row"><span>${head}</span>${right}</div>`;
+      }).join("");
+    }
+
+    // ===== MAIN =====
+    async function loadDepartures() {
+      try {
+        const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
+        const json = await res.json();
+
+        const all = Array.isArray(json?.departures) ? json.departures : [];
+
+        // jen Metro C
+        const metroC = all.filter(d => (d?.route?.short_name || "").toUpperCase() === "C");
+
+        // rozdělit podle směru
+        const hajeList = metroC.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+        const letList  = metroC.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+
+        const haje = hajeList[0] || null;
+        const letnany = letList[0] || null;
+
+        // uložit poslední data (pro plynulý tick)
+        lastHaje = haje;
+        lastLet = letnany;
+        lastHajeList = hajeList.slice(0, 3);
+        lastLetList  = letList.slice(0, 3);
+
+        // první render hned po fetchi
+        tickLeaveCountdowns();
+
+        setStatus(true, "Live data OK");
+      } catch (e) {
+        console.error(e);
+        // necháme poslední známá data a jen přepneme status
+        setStatus(false, "Chyba dat / offline");
+      }
+    }
+
+    function tickLeaveCountdowns(){
+      renderBig("bigHaje", lastHaje);
+      renderBig("bigLet", lastLet);
+      renderList("listHaje", lastHajeList);
+      renderList("listLet", lastLetList);
+    }
+
+    // start
+    tickClock();
+    loadDepartures();
+
+    // sync dat
+    setInterval(loadDepartures, FETCH_EVERY_MS);
+
+    // lokální tick 1s
+    setInterval(tickClock, 1000);
+    setInterval(tickLeaveCountdowns, 1000);
+  </script>
 </body>
 </html>
-
- 
