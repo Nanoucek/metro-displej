@@ -403,6 +403,18 @@
       renderList("listLet", lastLetList);
     }
 
+    function tickLeaveCountdowns() {
+
+  // ===== BIG čísla =====
+  renderBig("bigHaje", lastHaje);
+  renderBig("bigLet", lastLet);
+
+  // ===== seznamy =====
+  renderList("listHaje", lastHajeList);
+  renderList("listLet", lastLetList);
+
+}
+
     async function loadDepartures() {
       try {
         const res = await fetch(
