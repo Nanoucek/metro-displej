@@ -328,18 +328,7 @@
       return all;
     }
 
-    function isMetro(dep){
-  const short = (dep?.route?.short_name || "").toUpperCase();
-
-  // Metro C
-  if (short === "C") return true;
-
-  // fallback — když short_name chybí, nech data projít
-  if (!short) return true;
-
-  return false;
-}
-
+    
     function getDepSeconds(dep){
       const ts = dep?.departure_timestamp;
       const m = Number(ts?.minutes);
@@ -415,12 +404,20 @@
         // ✅ tady je hlavní oprava:
         const allDepartures = extractAllDepartures(json);
 
-        // ✅ jen metro (type 1)
-        const metroOnly = allDepartures.filter(isMetro);
 
+        // ===== Metro C podle směru =====
+const hajeList = allDepartures.filter(d =>
+  /háje/i.test(d?.trip?.headsign || "")
+);
+
+const letList = allDepartures.filter(d =>
+  /letňany/i.test(d?.trip?.headsign || "")
+);
+
+        
         // ✅ směry podle headsign
-        const hajeRaw = metroOnly.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-        const letRaw  = metroOnly.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+        const hajeRaw = hajeList.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+        const letRaw  = letList.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
 
         const hajeList = sortBySoonest(hajeRaw);
         const letList  = sortBySoonest(letRaw);
