@@ -316,13 +316,26 @@
 
     // minutes+seconds z Golemia → sekundy do odjezdu
     function getDepSeconds(dep){
-      const ts = dep?.departure_timestamp;
-      const m = Number(ts?.minutes);
-      const s = Number(ts?.seconds);
+  const ts = dep?.departure_timestamp;
 
-      if (!Number.isFinite(m)) return null;
-      return (m * 60) + (Number.isFinite(s) ? s : 0);
-    }
+  // 1️⃣ nejlepší zdroj – predicted čas
+  const predicted = ts?.predicted || ts?.scheduled;
+  if (predicted) {
+    const depTime = new Date(predicted).getTime();
+    const now = Date.now();
+    return Math.floor((depTime - now) / 1000);
+  }
+
+  // 2️⃣ fallback (když API vrátí minutes)
+  const m = Number(ts?.minutes);
+  const s = Number(ts?.seconds);
+
+  if (Number.isFinite(m)) {
+    return (m * 60) + (Number.isFinite(s) ? s : 0);
+  }
+
+  return null;
+}
 
     // seřadit podle nejbližšího odjezdu
     function sortBySoonest(arr){
