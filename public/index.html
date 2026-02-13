@@ -208,10 +208,6 @@
       white-space:nowrap;
     }
 
-    .badge.good{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); color: rgba(167,243,208,.95); }
-    .badge.warn{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); color: rgba(253,230,138,.95); }
-    .badge.bad{  border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.12); color: rgba(254,202,202,.95); }
-
     .footer{
       display:flex;
       justify-content:space-between;
@@ -287,8 +283,8 @@
 
   <script>
     // ===== SETTINGS =====
-    const WALK_SECONDS = 4 * 60; // 4 minuty chůze
-    const LATE_THRESHOLD = -15;  // pod -15s -> Nestíháš
+    const WALK_SECONDS = 4 * 60;   // 4 minuty chůze
+    const LATE_THRESHOLD = -15;    // pod -15s -> Nestíháš
     const FETCH_EVERY_MS = 10000;
 
     // ===== LAST KNOWN DATA (pro plynulý tick) =====
@@ -318,26 +314,17 @@
         d.toLocaleTimeString("cs-CZ", { hour12:false });
     }
 
-    // ✅ FIX: seber departures ze všech stops[], ne jen stops[0]
-    function extractAllDepartures(json){
-      const stops = Array.isArray(json?.stops) ? json.stops : [];
-      const all = [];
-      for (const s of stops){
-        if (Array.isArray(s?.departures)) all.push(...s.departures);
-      }
-      return all;
-    }
-
-    
+    // minutes+seconds z Golemia → sekundy do odjezdu
     function getDepSeconds(dep){
       const ts = dep?.departure_timestamp;
       const m = Number(ts?.minutes);
       const s = Number(ts?.seconds);
+
       if (!Number.isFinite(m)) return null;
       return (m * 60) + (Number.isFinite(s) ? s : 0);
     }
 
-    // seřadit podle "za jak dlouho" (sekundy do odjezdu)
+    // seřadit podle nejbližšího odjezdu
     function sortBySoonest(arr){
       return arr.slice().sort((a,b) => {
         const sa = getDepSeconds(a);
@@ -396,33 +383,49 @@
       }).join("");
     }
 
+    function tickLeaveCountdowns(){
+      renderBig("bigHaje", lastHaje);
+      renderBig("bigLet", lastLet);
+      renderList("listHaje", lastHajeList);
+      renderList("listLet", lastLetList);
+    }
+
     async function loadDepartures() {
-  try {
-    const res = await fetch(
-      "/api/departures?name=Pražského%20povst%C3%A1n%C3%AD",
-      { cache: "no-store" }
-    );
-    const json = await res.json();
+      try {
+        const res = await fetch(
+          "/api/departures?name=Pražského%20povst%C3%A1n%C3%AD",
+          { cache: "no-store" }
+        );
+        const json = await res.json();
 
-    // departures ze všech stops
-    const allDepartures = (json?.stops || []).flatMap(s => s?.departures || []);
+        // departures ze všech stops
+        const allDepartures = (json?.stops || []).flatMap(s => s?.departures || []);
 
-    // Metro C poznáme podle směru
-    const hajeList = allDepartures.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-    const letList  = allDepartures.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+        // Metro C poznáme podle směru (nejstabilnější)
+        const hajeAll = allDepartures.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+        const letAll  = allDepartures.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
 
-    lastHaje = hajeList[0] || null;
-    lastLet  = letList[0] || null;
-    lastHajeList = hajeList.slice(0, 3);
-    lastLetList  = letList.slice(0, 3);
+        const hajeSorted = sortBySoonest(hajeAll);
+        const letSorted  = sortBySoonest(letAll);
 
+        lastHaje = hajeSorted[0] || null;
+        lastLet  = letSorted[0] || null;
+
+        lastHajeList = hajeSorted.slice(0, 3);
+        lastLetList  = letSorted.slice(0, 3);
+
+        tickLeaveCountdowns();
+        setStatus(true, "Live data OK");
+      } catch (e) {
+        console.error(e);
+        setStatus(false, "Chyba dat / offline");
+      }
+    }
+
+    // ===== START =====
+    tickClock();
+    loadDepartures();
     tickLeaveCountdowns();
-    setStatus(true, "Live data OK");
-  } catch (e) {
-    console.error(e);
-    setStatus(false, "Chyba dat / offline");
-  }
-}
 
     setInterval(loadDepartures, FETCH_EVERY_MS);
     setInterval(tickClock, 1000);
