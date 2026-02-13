@@ -283,34 +283,24 @@
   <script>
 async function loadDepartures() {
   try {
-    const res = await fetch("/api/departures?name=Pražského%20povstání");
-    const data = await res.json();
+    const res = await fetch("/api/departures?name=Pražského povstání");
+    const json = await res.json();
 
-    const now = new Date();
+    const departures = json.departures || [];
 
-    const metroC = data.departures.filter(d =>
-      d.route?.short_name === "C"
+    const haj = departures.find(d =>
+      d.trip?.headsign?.includes("Háje")
     );
 
-    const haje = metroC
-      .filter(d => d.trip?.headsign?.includes("Háje"))
-      .map(d => new Date(d.departure_timestamp.predicted));
+    const letnany = departures.find(d =>
+      d.trip?.headsign?.includes("Letňany")
+    );
 
-    const letnany = metroC
-      .filter(d => d.trip?.headsign?.includes("Letňany"))
-      .map(d => new Date(d.departure_timestamp.predicted));
+    document.querySelector("#haje-time").textContent =
+      haj?.departure_timestamp?.minutes ?? "--";
 
-    function nextMinutes(list) {
-      if (!list.length) return "--";
-      const diff = Math.round((list[0] - now) / 60000);
-      return diff >= 0 ? diff : "--";
-    }
-
-    document.getElementById("haje-time").textContent =
-      nextMinutes(haje);
-
-    document.getElementById("letnany-time").textContent =
-      nextMinutes(letnany);
+    document.querySelector("#letnany-time").textContent =
+      letnany?.departure_timestamp?.minutes ?? "--";
 
   } catch (e) {
     console.error(e);
