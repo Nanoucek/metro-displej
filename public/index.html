@@ -286,7 +286,8 @@ async function loadDepartures() {
     const res = await fetch("/api/departures?name=Pražského povstání");
     const json = await res.json();
 
-    const departures = json.departures || [];
+    const departures =
+  json?.stops?.[0]?.departures || [];
 
     const haj = departures.find(d =>
       d.trip?.headsign?.includes("Háje")
