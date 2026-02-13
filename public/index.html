@@ -294,23 +294,31 @@ async function loadDepartures() {
 
     const all = (json?.stops || []).flatMap(s => s?.departures || []);
 
-    const metroC = all.filter(d =>
-      (d?.route?.short_name || "").toUpperCase() === "C"
-    );
+// jen metro C
+const metroC = all.filter(d =>
+  (d?.route?.short_name || "").toUpperCase() === "C"
+);
 
-    const letnany = metroC.find(d =>
-      (d?.trip?.headsign || "").includes("Letňany")
-    );
+// DEBUG — uvidíš směry
+console.log(
+  metroC.map(d => d.trip?.headsign)
+);
 
-    const haje = metroC.find(d =>
-      (d?.trip?.headsign || "").includes("Háje")
-    );
+// směr Letňany
+const letnany = metroC.find(d =>
+  /letňany/i.test(d?.trip?.headsign || "")
+);
 
-    document.getElementById("bigLet").innerHTML =
-      `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+// směr Háje
+const haje = metroC.find(d =>
+  /háje/i.test(d?.trip?.headsign || "")
+);
 
-    document.getElementById("bigHaje").innerHTML =
-      `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+document.getElementById("bigLet").innerHTML =
+  `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+
+document.getElementById("bigHaje").innerHTML =
+  `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
 
   } catch (e) {
     console.error("LOAD ERROR:", e);
