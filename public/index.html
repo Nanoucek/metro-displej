@@ -329,12 +329,16 @@
     }
 
     function isMetro(dep){
-      // GTFS: type 1 = subway (metro)
-      const type = dep?.route?.type;
-      if (typeof type === "number") return type === 1;
-      // fallback: když type chybí, neblokuj
-      return true;
-    }
+  const short = (dep?.route?.short_name || "").toUpperCase();
+
+  // Metro C
+  if (short === "C") return true;
+
+  // fallback — když short_name chybí, nech data projít
+  if (!short) return true;
+
+  return false;
+}
 
     function getDepSeconds(dep){
       const ts = dep?.departure_timestamp;
