@@ -281,127 +281,45 @@
   </div>
 
   <script>
-    // Stop ID, které jsi už ověřil JSONem
-    const STOP_ID = "U699Z1P";
+async function loadDepartures() {
+  try {
+    const res = await fetch("/api/departures?name=Pražského%20povstání");
+    const data = await res.json();
 
-    // Jak často tahat nové predikce z API (ms)
-    const FETCH_EVERY = 10000;
+    const now = new Date();
 
-    // Interně: odjezdy (timestamps) pro směr Letňany / Háje
-    let nextLet = [];
-    let nextHaje = [];
+    const metroC = data.departures.filter(d =>
+      d.route?.short_name === "C"
+    );
 
-    const el = (id) => document.getElementById(id);
+    const haje = metroC
+      .filter(d => d.trip?.headsign?.includes("Háje"))
+      .map(d => new Date(d.departure_timestamp.predicted));
 
-    function pad(n){ return String(n).padStart(2,"0"); }
+    const letnany = metroC
+      .filter(d => d.trip?.headsign?.includes("Letňany"))
+      .map(d => new Date(d.departure_timestamp.predicted));
 
-    function setClock(){
-      const d = new Date();
-      el("clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    function nextMinutes(list) {
+      if (!list.length) return "--";
+      const diff = Math.round((list[0] - now) / 60000);
+      return diff >= 0 ? diff : "--";
     }
 
-    function badgeFor(min){
-      if (min === null) return ["—", "badge"];
-      if (min <= 2) return [`🚇 ${min} min`, "badge good"];
-      if (min <= 6) return [`⏳ ${min} min`, "badge warn"];
-      return [`🕒 ${min} min`, "badge"];
-    }
+    document.getElementById("haje-time").textContent =
+      nextMinutes(haje);
 
-    function minutesUntil(iso){
-      const t = new Date(iso).getTime();
-      const now = Date.now();
-      const diff = Math.max(0, t - now);
-      return Math.round(diff / 60000);
-    }
+    document.getElementById("letnany-time").textContent =
+      nextMinutes(letnany);
 
-    function fmtTime(iso){
-      const d = new Date(iso);
-      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    }
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-    function renderLists(){
-      // velká čísla = nejbližší odjezd
-      const letMin = nextLet.length ? minutesUntil(nextLet[0]) : null;
-      const hajeMin = nextHaje.length ? minutesUntil(nextHaje[0]) : null;
-
-      el("bigLet").innerHTML  = (letMin===null ? "--" : letMin) + "<small>min</small>";
-      el("bigHaje").innerHTML = (hajeMin===null ? "--" : hajeMin) + "<small>min</small>";
-
-      const [letTxt, letCls] = badgeFor(letMin);
-      const [hajeTxt, hajeCls] = badgeFor(hajeMin);
-
-      el("bLet").textContent = letTxt;  el("bLet").className = letCls;
-      el("bHaje").textContent = hajeTxt; el("bHaje").className = hajeCls;
-
-      // seznam dalších 4 odjezdů
-      const mkRows = (arr) => {
-        if (!arr.length) return `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
-        return arr.slice(0,4).map(iso => {
-          const m = minutesUntil(iso);
-          return `<div class="row"><span>Za ${m} min</span><span class="time">${fmtTime(iso)}</span></div>`;
-        }).join("");
-      };
-
-      el("listLet").innerHTML  = mkRows(nextLet);
-      el("listHaje").innerHTML = mkRows(nextHaje);
-    }
-
-    function setStatus(ok, msg){
-      el("statusText").textContent = msg;
-      el("statusDot").style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
-      el("statusDot").style.boxShadow = ok ? "0 0 0 6px rgba(52,211,153,.12)" : "0 0 0 6px rgba(248,113,113,.12)";
-    }
-
-    async function fetchDepartures(){
-      try{
-        const r = await fetch(`/api/departures?stop=${encodeURIComponent(STOP_ID)}&t=${Date.now()}`, { cache: "no-store" });
-        if (!r.ok) throw new Error("HTTP " + r.status);
-
-        const data = await r.json();
-
-        // data = { stops: [...], departures: [...] } (podle tvého JSONu)
-        const deps = Array.isArray(data.departures) ? data.departures : [];
-
-        // vyber jen metro C (route short_name "C" nebo "191" podle dat) – v praxi má metro často short_name "C"
-        // aby to bylo robustní, filtrujeme podle: stop_name == "stadion" a platform "A" (z tvého JSONu)
-        // a směry rozlišíme podle headsign obsahující "Letňany" nebo "Háje"
-        const letArr = [];
-        const hajeArr = [];
-
-        for (const d of deps){
-          const head = (d?.trip?.headsign || "").toLowerCase();
-
-          // vyber nejpřesnější timestamp: predicted -> scheduled
-          const depIso = d?.departure_timestamp?.predicted || d?.departure_timestamp?.scheduled;
-          if (!depIso) continue;
-
-          if (head.includes("letňany") || head.includes("letnany")) letArr.push(depIso);
-          if (head.includes("háje") || head.includes("haje")) hajeArr.push(depIso);
-        }
-
-        // seřadit podle času
-        letArr.sort((a,b)=> new Date(a)-new Date(b));
-        hajeArr.sort((a,b)=> new Date(a)-new Date(b));
-
-        nextLet = letArr;
-        nextHaje = hajeArr;
-
-        setStatus(true, "Live data OK");
-        renderLists();
-      }catch(e){
-        setStatus(false, "Chyba dat (zkusím znovu)");
-        // necháme poslední známé hodnoty a jen přerenderujeme odpočet
-        renderLists();
-      }
-    }
-
-    // Tick každou 1s: odpočty běží i mezi fetchi
-    setInterval(() => { setClock(); renderLists(); }, 1000);
-
-    // Fetch pravidelně
-    fetchDepartures();
-    setInterval(fetchDepartures, FETCH_EVERY);
-  </script>
+loadDepartures();
+setInterval(loadDepartures, 10000);
+</script>
 </body>
 </html>
 
