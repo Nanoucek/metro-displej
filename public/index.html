@@ -281,146 +281,148 @@
   </div>
 
   <script>
-  // ===== SETTINGS =====
-  const WALK_SECONDS = 4 * 60; // 4 minuty chůze
-  const LATE_THRESHOLD = -15;  // pod -15s -> Nestíháš
-  const FETCH_EVERY_MS = 10000;
+    // ===== SETTINGS =====
+    const WALK_SECONDS = 4 * 60; // 4 minuty chůze
+    const LATE_THRESHOLD = -15;  // pod -15s -> Nestíháš
+    const FETCH_EVERY_MS = 10000;
 
-  // ===== LAST KNOWN DATA (pro plynulý tick) =====
-  let lastHaje = null;
-  let lastLet = null;
-  let lastHajeList = [];
-  let lastLetList = [];
+    // ===== LAST KNOWN DATA (pro plynulý tick) =====
+    let lastHaje = null;
+    let lastLet = null;
+    let lastHajeList = [];
+    let lastLetList = [];
 
-  // ===== HELPERS =====
-  function fmtMMSS(totalSeconds){
-    const s = Math.max(0, Math.floor(totalSeconds));
-    const mm = String(Math.floor(s / 60)).padStart(2, "0");
-    const ss = String(s % 60).padStart(2, "0");
-    return `${mm}:${ss}`;
-  }
-
-  function toNumberMinutes(v){
-    // minutes často přijde jako "3"
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-
-  function setStatus(ok, text){
-    const dot = document.getElementById("statusDot");
-    const t = document.getElementById("statusText");
-    t.textContent = text;
-    dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
-  }
-
-  function tickClock(){
-    const d = new Date();
-    document.getElementById("clock").textContent =
-      d.toLocaleTimeString("cs-CZ", { hour12:false });
-  }
-
-  function renderBig(elId, dep){
-    const el = document.getElementById(elId);
-
-    const depMin = toNumberMinutes(dep?.departure_timestamp?.minutes);
-    if (depMin === null){
-      el.innerHTML = `--<small>Vyjdi za</small>`;
-      return;
+    // ===== HELPERS =====
+    function fmtMMSS(totalSeconds){
+      const s = Math.max(0, Math.floor(totalSeconds));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
     }
 
-    const leaveIn = depMin * 60 - WALK_SECONDS;
-
-    if (leaveIn < LATE_THRESHOLD) {
-      el.innerHTML = `—<small>Nestíháš</small>`;
-    } else if (leaveIn <= 0) {
-      el.innerHTML = `TEĎ<small>Vyjdi</small>`;
-    } else {
-      el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
-    }
-  }
-
-  function renderList(elId, items){
-    const el = document.getElementById(elId);
-
-    if (!items.length){
-      el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
-      return;
+    function setStatus(ok, text){
+      const dot = document.getElementById("statusDot");
+      const t = document.getElementById("statusText");
+      t.textContent = text;
+      dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
     }
 
-    el.innerHTML = items.map(d => {
-      const head = d?.trip?.headsign ?? "—";
-      const depMin = toNumberMinutes(d?.departure_timestamp?.minutes);
+    function tickClock(){
+      const d = new Date();
+      document.getElementById("clock").textContent =
+        d.toLocaleTimeString("cs-CZ", { hour12:false });
+    }
 
-      if (depMin === null) {
-        return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
+    function extractDeparturesFromGolemio(json){
+      const a = json?.stops?.[0]?.departures;
+      return Array.isArray(a) ? a : [];
+    }
+
+    function isMetro(dep){
+      // GTFS: type 1 = subway (metro)
+      const type = dep?.route?.type;
+      if (typeof type === "number") return type === 1;
+      // fallback: když type chybí, neblokuj
+      return true;
+    }
+
+    function getDepSeconds(dep){
+      const ts = dep?.departure_timestamp;
+      const m = Number(ts?.minutes);
+      const s = Number(ts?.seconds);
+
+      if (!Number.isFinite(m)) return null;
+      return (m * 60) + (Number.isFinite(s) ? s : 0);
+    }
+
+    function renderBig(elId, dep){
+      const el = document.getElementById(elId);
+
+      const depInSec = getDepSeconds(dep);
+      if (depInSec === null){
+        el.innerHTML = `--<small>Vyjdi za</small>`;
+        return;
       }
 
-      const leaveIn = depMin * 60 - WALK_SECONDS;
+      const leaveIn = depInSec - WALK_SECONDS;
 
-      let right;
-      if (leaveIn < LATE_THRESHOLD) right = `<span class="time">Nestíháš</span>`;
-      else if (leaveIn <= 0) right = `<span class="time">Vyjdi teď</span>`;
-      else right = `<span class="time">Vyjdi za ${fmtMMSS(leaveIn)}</span>`;
-
-      return `<div class="row"><span>${head}</span>${right}</div>`;
-    }).join("");
-  }
-
-  function isMetroC(dep){
-    // měkký filtr: když route.short_name není, nech to projít
-    const sn = (dep?.route?.short_name || "").toUpperCase();
-    if (!sn) return true;
-    return sn === "C";
-  }
-
-  function extractDeparturesFromGolemio(json){
-    const a = json?.stops?.[0]?.departures;
-    return Array.isArray(a) ? a : [];
-  }
-
-  // ===== MAIN =====
-  async function loadDepartures() {
-    try {
-      const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
-      const json = await res.json();
-
-      // ✅ tvoje aktuální struktura (RAW z Golemia)
-      const departures = extractDeparturesFromGolemio(json);
-
-      // Metro C (měkce)
-      const metroC = departures.filter(isMetroC);
-
-      // směry
-      const hajeList = metroC.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-      const letList  = metroC.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
-
-      lastHaje = hajeList[0] || null;
-      lastLet = letList[0] || null;
-      lastHajeList = hajeList.slice(0, 3);
-      lastLetList  = letList.slice(0, 3);
-
-      tickLeaveCountdowns();
-      setStatus(true, "Live data OK");
-    } catch (e) {
-      console.error(e);
-      setStatus(false, "Chyba dat / offline");
+      if (leaveIn < LATE_THRESHOLD) {
+        el.innerHTML = `—<small>Nestíháš</small>`;
+      } else if (leaveIn <= 0) {
+        el.innerHTML = `TEĎ<small>Vyjdi</small>`;
+      } else {
+        el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
+      }
     }
-  }
 
-  function tickLeaveCountdowns(){
-    renderBig("bigHaje", lastHaje);
-    renderBig("bigLet", lastLet);
-    renderList("listHaje", lastHajeList);
-    renderList("listLet", lastLetList);
-  }
+    function renderList(elId, items){
+      const el = document.getElementById(elId);
 
-  // start
-  tickClock();
-  loadDepartures();
+      if (!items.length){
+        el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
+        return;
+      }
 
-  setInterval(loadDepartures, FETCH_EVERY_MS);
-  setInterval(tickClock, 1000);
-  setInterval(tickLeaveCountdowns, 1000);
-</script>
+      el.innerHTML = items.map(d => {
+        const head = d?.trip?.headsign ?? "—";
+        const depInSec = getDepSeconds(d);
+
+        if (depInSec === null) {
+          return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
+        }
+
+        const leaveIn = depInSec - WALK_SECONDS;
+
+        let right;
+        if (leaveIn < LATE_THRESHOLD) right = `<span class="time">Nestíháš</span>`;
+        else if (leaveIn <= 0) right = `<span class="time">Vyjdi teď</span>`;
+        else right = `<span class="time">Vyjdi za ${fmtMMSS(leaveIn)}</span>`;
+
+        return `<div class="row"><span>${head}</span>${right}</div>`;
+      }).join("");
+    }
+
+    async function loadDepartures() {
+      try {
+        const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
+        const json = await res.json();
+
+        const departures = extractDeparturesFromGolemio(json);
+
+        // ✅ jen metro (route.type === 1)
+        const metroOnly = departures.filter(isMetro);
+
+        // ✅ směry podle headsign
+        const hajeList = metroOnly.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+        const letList  = metroOnly.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+
+        lastHaje = hajeList[0] || null;
+        lastLet = letList[0] || null;
+        lastHajeList = hajeList.slice(0, 3);
+        lastLetList  = letList.slice(0, 3);
+
+        tickLeaveCountdowns();
+        setStatus(true, "Live data OK");
+      } catch (e) {
+        console.error(e);
+        setStatus(false, "Chyba dat / offline");
+      }
+    }
+
+    function tickLeaveCountdowns(){
+      renderBig("bigHaje", lastHaje);
+      renderBig("bigLet", lastLet);
+      renderList("listHaje", lastHajeList);
+      renderList("listLet", lastLetList);
+    }
+
+    // start
+    tickClock();
+    loadDepartures();
+
+    setInterval(loadDepartures, FETCH_EVERY_MS);
+    setInterval(tickClock, 1000);
+    setInterval(tickLeaveCountdowns, 1000);
+  </script>
 </body>
 </html>
