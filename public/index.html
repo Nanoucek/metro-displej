@@ -145,189 +145,157 @@
   </div>
 
 <script>
-(() => {
-  // ===== SETTINGS =====
-  const WALK_SECONDS = 4 * 60;  // 4 min chůze
-  const LATE_THRESHOLD = -15;   // pod -15s => Nestíháš
-  const FETCH_EVERY_MS = 10000;
+/* ================= SETTINGS ================= */
 
-  // ===== STATE =====
-  let lastHaje = null;
-  let lastLet = null;
-  let lastHajeList = [];
-  let lastLetList = [];
+const WALK_SECONDS = 4 * 60;
+const FETCH_EVERY_MS = 10000;
 
-  // ===== UI =====
-  function setStatus(ok, text){
-    const dot = document.getElementById("statusDot");
-    const t = document.getElementById("statusText");
-    t.textContent = text;
-    dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
-  }
-  function tickClock(){
-    document.getElementById("clock").textContent =
-      new Date().toLocaleTimeString("cs-CZ", { hour12:false });
-  }
-  function setDebug(text){
-    const el = document.getElementById("debug");
-    if (el) el.textContent = "DEBUG: " + text;
-  }
+/* ================= STATE ================= */
 
-  // ===== TEXT normalize (bez diakritiky) =====
-  function norm(s){
-    return String(s || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  }
+let lastHaje = null;
+let lastLet = null;
+let lastHajeList = [];
+let lastLetList = [];
 
-  // ===== TIME (sekundy do odjezdu) =====
-  function depSeconds(dep){
-    const ts = dep?.departure_timestamp;
+/* ================= HELPERS ================= */
 
-    // 1) predicted/scheduled (nejspolehlivější)
-    const iso = ts?.predicted || ts?.scheduled;
-    if (iso){
-      const ms = new Date(iso).getTime();
-      if (Number.isFinite(ms)) return Math.floor((ms - Date.now()) / 1000);
-    }
+function fmtMMSS(sec){
+  sec = Math.max(0, Math.floor(sec));
+  const m = String(Math.floor(sec/60)).padStart(2,"0");
+  const s = String(sec%60).padStart(2,"0");
+  return `${m}:${s}`;
+}
 
-    // 2) fallback minutes/seconds
-    const m = Number(ts?.minutes);
-    const s = Number(ts?.seconds);
-    if (Number.isFinite(m)) return (m * 60) + (Number.isFinite(s) ? s : 0);
+function tickClock(){
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("cs-CZ",{hour12:false});
+}
 
-    return null;
-  }
+function setStatus(ok,text){
+  document.getElementById("statusText").textContent = text;
+}
 
-  function bySoonest(a,b){
-    const sa = depSeconds(a);
-    const sb = depSeconds(b);
-    if (sa === null && sb === null) return 0;
-    if (sa === null) return 1;
-    if (sb === null) return -1;
-    return sa - sb;
+/* ===== extract departures (SPRÁVNĚ) ===== */
+
+function extractAll(json){
+  const stops = Array.isArray(json?.stops) ? json.stops : [];
+  return stops.flatMap(s => s?.departures || []);
+}
+
+function depSeconds(dep){
+  const ts = dep?.departure_timestamp;
+  if(!ts) return null;
+
+  const m = Number(ts.minutes);
+  const s = Number(ts.seconds ?? 0);
+
+  if(!Number.isFinite(m)) return null;
+  return m*60+s;
+}
+
+/* ================= RENDER ================= */
+
+function renderBig(id,dep){
+  const el=document.getElementById(id);
+  const sec=depSeconds(dep);
+
+  if(sec===null){
+    el.innerHTML="--<small>Vyjdi za</small>";
+    return;
   }
 
-  // ===== EXTRACT departures ze všech stops[] =====
-  function extractAll(json){
-    const stops = Array.isArray(json?.stops) ? json.stops : [];
-    const out = [];
-    for (const st of stops){
-      if (Array.isArray(st?.departures)) out.push(...st.departures);
-    }
-    return out;
+  const leave=sec-WALK_SECONDS;
+
+  if(leave<=0)
+    el.innerHTML="TEĎ<small>Vyjdi</small>";
+  else
+    el.innerHTML=`${fmtMMSS(leave)}<small>Vyjdi za</small>`;
+}
+
+function renderList(id,list){
+  const el=document.getElementById(id);
+
+  if(!list.length){
+    el.innerHTML=`<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
+    return;
   }
 
-  // ===== FILTER: Metro C (bez rozbití) =====
-  function isMetroC(dep){
-    const sn = (dep?.route?.short_name || "").toUpperCase();
-    // když je vyplněné short_name, ber jen C
-    if (sn) return sn === "C";
-    // když short_name chybí, nech projít a ohlídáme to přes headsign
-    return true;
+  el.innerHTML=list.map(d=>{
+    const head=d?.trip?.headsign ?? "—";
+    const sec=depSeconds(d);
+
+    if(sec===null)
+      return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
+
+    const leave=sec-WALK_SECONDS;
+
+    return `
+      <div class="row">
+        <span>${head}</span>
+        <span class="time">
+          ${leave<=0 ? "Vyjdi teď" : "Za "+fmtMMSS(leave)}
+        </span>
+      </div>`;
+  }).join("");
+}
+
+function tickLeaveCountdowns(){
+  renderBig("bigHaje",lastHaje);
+  renderBig("bigLet",lastLet);
+  renderList("listHaje",lastHajeList);
+  renderList("listLet",lastLetList);
+}
+
+/* ================= LOAD ================= */
+
+async function loadDepartures(){
+  try{
+
+    const res=await fetch(
+      "/api/departures?name=Pražského%20povst%C3%A1n%C3%AD",
+      {cache:"no-store"}
+    );
+
+    const json=await res.json();
+
+    const all=extractAll(json);
+
+    /* METRO C */
+    const metro=all.filter(d =>
+      (d?.route?.short_name || "").toUpperCase()==="C"
+    );
+
+    const haje=metro.filter(d =>
+      /háje/i.test(d?.trip?.headsign||"")
+    );
+
+    const letnany=metro.filter(d =>
+      /letňany/i.test(d?.trip?.headsign||"")
+    );
+
+    lastHaje=haje[0]||null;
+    lastLet=letnany[0]||null;
+    lastHajeList=haje.slice(0,3);
+    lastLetList=letnany.slice(0,3);
+
+    tickLeaveCountdowns();
+    setStatus(true,"Live data OK");
+
+  }catch(e){
+    console.error(e);
+    setStatus(false,"Chyba dat");
   }
+}
 
-  function fmtMMSS(totalSeconds){
-    const s = Math.max(0, Math.floor(totalSeconds));
-    const mm = String(Math.floor(s / 60)).padStart(2, "0");
-    const ss = String(s % 60).padStart(2, "0");
-    return `${mm}:${ss}`;
-  }
+/* ================= START ================= */
 
-  function renderBig(elId, dep){
-    const el = document.getElementById(elId);
-    const sec = dep ? depSeconds(dep) : null;
+tickClock();
+loadDepartures();
 
-    if (sec === null){
-      el.innerHTML = `--<small>Vyjdi za</small>`;
-      return;
-    }
+setInterval(loadDepartures,FETCH_EVERY_MS);
+setInterval(tickClock,1000);
+setInterval(tickLeaveCountdowns,1000);
 
-    const leaveIn = sec - WALK_SECONDS;
-    if (leaveIn < LATE_THRESHOLD) el.innerHTML = `—<small>Nestíháš</small>`;
-    else if (leaveIn <= 0) el.innerHTML = `TEĎ<small>Vyjdi</small>`;
-    else el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
-  }
-
-  function renderList(elId, items){
-    const el = document.getElementById(elId);
-    if (!items.length){
-      el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
-      return;
-    }
-
-    el.innerHTML = items.map(d => {
-      const head = d?.trip?.headsign ?? "—";
-      const sec = depSeconds(d);
-      if (sec === null) return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
-
-      const leaveIn = sec - WALK_SECONDS;
-      let right;
-      if (leaveIn < LATE_THRESHOLD) right = `<span class="time">Nestíháš</span>`;
-      else if (leaveIn <= 0) right = `<span class="time">Vyjdi teď</span>`;
-      else right = `<span class="time">Vyjdi za ${fmtMMSS(leaveIn)}</span>`;
-
-      return `<div class="row"><span>${head}</span>${right}</div>`;
-    }).join("");
-  }
-
-  function tickUI(){
-    renderBig("bigLet", lastLet);
-    renderBig("bigHaje", lastHaje);
-    renderList("listLet", lastLetList);
-    renderList("listHaje", lastHajeList);
-  }
-
-  async function loadDepartures(){
-    try{
-      const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
-      const json = await res.json();
-
-      const all = extractAll(json);
-
-      // vyhoď kraviny bez času
-      const withTime = all.filter(d => depSeconds(d) !== null);
-
-      // metro C (měkce)
-      const metroMaybeC = withTime.filter(isMetroC);
-
-      // směry přes normalizovaný headsign (funguje i bez diakritiky)
-      const haje = metroMaybeC.filter(d => norm(d?.trip?.headsign).includes("haje")).sort(bySoonest);
-      const letnany = metroMaybeC.filter(d => norm(d?.trip?.headsign).includes("letnany")).sort(bySoonest);
-
-      lastHaje = haje[0] || null;
-      lastLet = letnany[0] || null;
-
-      lastHajeList = haje.slice(0, 3);
-      lastLetList = letnany.slice(0, 3);
-
-      tickUI();
-
-      setStatus(true, "Live data OK");
-      setDebug(`all=${all.length} | time=${withTime.length} | C=${metroMaybeC.length} | haje=${haje.length} | let=${letnany.length}`);
-    } catch(e){
-      console.error(e);
-      setStatus(false, "Chyba: " + (e?.message || "offline"));
-      setDebug("ERROR: " + (e?.message || "unknown"));
-    }
-  }
-
-  // tvrdé JS chyby ukaž rovnou
-  window.addEventListener("error", (ev) => {
-    setStatus(false, "JS error");
-    setDebug("JS: " + (ev?.message || "unknown"));
-  });
-
-  // START
-  tickClock();
-  loadDepartures();
-  tickUI();
-
-  setInterval(loadDepartures, FETCH_EVERY_MS);
-  setInterval(tickClock, 1000);
-  setInterval(tickUI, 1000);
-})();
 </script>
 </body>
 </html>
