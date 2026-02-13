@@ -1,32 +1,27 @@
 export async function onRequest(context) {
-  const { request, env } = context;
-  const url = new URL(request.url);
 
-  const stop = url.searchParams.get("stop");
-  if (!stop) {
-    return new Response(JSON.stringify({ error: "Missing ?stop=" }), {
-      status: 400,
-      headers: { "content-type": "application/json; charset=utf-8" },
-    });
-  }
+  const token = context.env.GOLEMIO_TOKEN;
 
-  const golemioUrl = `https://api.golemio.cz/v2/pid/departureboards/?ids=${encodeURIComponent(stop)}`;
+  // Pražského povstání — metro C
+  const STOP_ID = "U699Z1P"; 
 
-  const r = await fetch(golemioUrl, {
+  const url =
+    `https://api.golemio.cz/v2/pid/departureboards` +
+    `?ids=${STOP_ID}` +
+    `&limit=10` +
+    `&minutesAfter=60`;
+
+  const response = await fetch(url, {
     headers: {
-      "X-Access-Token": env.GOLEMIO_TOKEN,
-      "Accept": "application/json",
-    },
+      "X-Access-Token": token
+    }
   });
 
-  const body = await r.text();
+  const data = await response.json();
 
-  return new Response(body, {
-    status: r.status,
+  return new Response(JSON.stringify(data), {
     headers: {
-      "content-type": "application/json; charset=utf-8",
-      "access-control-allow-origin": "*",
-      "cache-control": "no-store",
-    },
+      "content-type": "application/json"
+    }
   });
 }
