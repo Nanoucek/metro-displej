@@ -23,7 +23,12 @@
     }
 
     *{ box-sizing:border-box; }
-    html,body{ height:100%; margin:0; font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Roboto, Arial; color:var(--text); }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Roboto, Arial;
+      color:var(--text);
+    }
     body{
       background:
         radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.28), transparent 60%),
@@ -313,9 +318,14 @@
         d.toLocaleTimeString("cs-CZ", { hour12:false });
     }
 
-    function extractDeparturesFromGolemio(json){
-      const a = json?.stops?.[0]?.departures;
-      return Array.isArray(a) ? a : [];
+    // ✅ FIX: seber departures ze všech stops[], ne jen stops[0]
+    function extractAllDepartures(json){
+      const stops = Array.isArray(json?.stops) ? json.stops : [];
+      const all = [];
+      for (const s of stops){
+        if (Array.isArray(s?.departures)) all.push(...s.departures);
+      }
+      return all;
     }
 
     function isMetro(dep){
@@ -330,9 +340,20 @@
       const ts = dep?.departure_timestamp;
       const m = Number(ts?.minutes);
       const s = Number(ts?.seconds);
-
       if (!Number.isFinite(m)) return null;
       return (m * 60) + (Number.isFinite(s) ? s : 0);
+    }
+
+    // seřadit podle "za jak dlouho" (sekundy do odjezdu)
+    function sortBySoonest(arr){
+      return arr.slice().sort((a,b) => {
+        const sa = getDepSeconds(a);
+        const sb = getDepSeconds(b);
+        if (sa === null && sb === null) return 0;
+        if (sa === null) return 1;
+        if (sb === null) return -1;
+        return sa - sb;
+      });
     }
 
     function renderBig(elId, dep){
@@ -387,17 +408,21 @@
         const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
         const json = await res.json();
 
-        const departures = extractDeparturesFromGolemio(json);
+        // ✅ tady je hlavní oprava:
+        const allDepartures = extractAllDepartures(json);
 
-        // ✅ jen metro (route.type === 1)
-        const metroOnly = departures.filter(isMetro);
+        // ✅ jen metro (type 1)
+        const metroOnly = allDepartures.filter(isMetro);
 
         // ✅ směry podle headsign
-        const hajeList = metroOnly.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-        const letList  = metroOnly.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+        const hajeRaw = metroOnly.filter(d => /háje/i.test(d?.trip?.headsign || ""));
+        const letRaw  = metroOnly.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+
+        const hajeList = sortBySoonest(hajeRaw);
+        const letList  = sortBySoonest(letRaw);
 
         lastHaje = hajeList[0] || null;
-        lastLet = letList[0] || null;
+        lastLet  = letList[0] || null;
         lastHajeList = hajeList.slice(0, 3);
         lastLetList  = letList.slice(0, 3);
 
