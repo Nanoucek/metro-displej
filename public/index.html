@@ -208,6 +208,10 @@
       white-space:nowrap;
     }
 
+    .badge.good{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); color: rgba(167,243,208,.95); }
+    .badge.warn{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); color: rgba(253,230,138,.95); }
+    .badge.bad{  border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.12); color: rgba(254,202,202,.95); }
+
     .footer{
       display:flex;
       justify-content:space-between;
@@ -282,25 +286,19 @@
   </div>
 
   <script>
+  (() => {
     // ===== SETTINGS =====
-    const WALK_SECONDS = 4 * 60;   // 4 minuty chůze
-    const LATE_THRESHOLD = -15;    // pod -15s -> Nestíháš
+    const WALK_SECONDS = 4 * 60;      // 4 min chůze
+    const LATE_THRESHOLD = -15;       // pod -15s -> Nestíháš
     const FETCH_EVERY_MS = 10000;
 
-    // ===== LAST KNOWN DATA (pro plynulý tick) =====
+    // ===== STATE =====
     let lastHaje = null;
     let lastLet = null;
     let lastHajeList = [];
     let lastLetList = [];
 
-    // ===== HELPERS =====
-    function fmtMMSS(totalSeconds){
-      const s = Math.max(0, Math.floor(totalSeconds));
-      const mm = String(Math.floor(s / 60)).padStart(2, "0");
-      const ss = String(s % 60).padStart(2, "0");
-      return `${mm}:${ss}`;
-    }
-
+    // ===== UI helpers =====
     function setStatus(ok, text){
       const dot = document.getElementById("statusDot");
       const t = document.getElementById("statusText");
@@ -309,64 +307,84 @@
     }
 
     function tickClock(){
-      const d = new Date();
       document.getElementById("clock").textContent =
-        d.toLocaleTimeString("cs-CZ", { hour12:false });
+        new Date().toLocaleTimeString("cs-CZ", { hour12:false });
     }
 
-    // minutes+seconds z Golemia → sekundy do odjezdu
+    function fmtMMSS(totalSeconds){
+      const s = Math.max(0, Math.floor(totalSeconds));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    // ===== DATA helpers =====
+    function extractAllDepartures(json){
+      const stops = Array.isArray(json?.stops) ? json.stops : [];
+      const out = [];
+      for (const s of stops){
+        if (Array.isArray(s?.departures)) out.push(...s.departures);
+      }
+      return out;
+    }
+
     function getDepSeconds(dep){
-  const ts = dep?.departure_timestamp;
+      const ts = dep?.departure_timestamp;
 
-  // 1️⃣ nejlepší zdroj – predicted čas
-  const predicted = ts?.predicted || ts?.scheduled;
-  if (predicted) {
-    const depTime = new Date(predicted).getTime();
-    const now = Date.now();
-    return Math.floor((depTime - now) / 1000);
-  }
+      // 1) nejlepší: predicted/scheduled timestamp
+      const iso = ts?.predicted || ts?.scheduled;
+      if (iso) {
+        const depMs = new Date(iso).getTime();
+        if (Number.isFinite(depMs)) {
+          return Math.floor((depMs - Date.now()) / 1000);
+        }
+      }
 
-  // 2️⃣ fallback (když API vrátí minutes)
-  const m = Number(ts?.minutes);
-  const s = Number(ts?.seconds);
+      // 2) fallback: minutes/seconds
+      const m = Number(ts?.minutes);
+      const s = Number(ts?.seconds);
+      if (Number.isFinite(m)) return (m * 60) + (Number.isFinite(s) ? s : 0);
 
-  if (Number.isFinite(m)) {
-    return (m * 60) + (Number.isFinite(s) ? s : 0);
-  }
-
-  return null;
-}
-
-    // seřadit podle nejbližšího odjezdu
-    function sortBySoonest(arr){
-      return arr.slice().sort((a,b) => {
-        const sa = getDepSeconds(a);
-        const sb = getDepSeconds(b);
-        if (sa === null && sb === null) return 0;
-        if (sa === null) return 1;
-        if (sb === null) return -1;
-        return sa - sb;
-      });
+      return null;
     }
 
+    function isMetroC(dep){
+      // pokud route.short_name existuje, vyžaduj C
+      const sn = (dep?.route?.short_name || "").toUpperCase();
+      if (sn) return sn === "C";
+      return true; // když chybí, neblokuj (zachrání data)
+    }
+
+    function validSoon(dep){
+      const sec = getDepSeconds(dep);
+      // necháme i malé mínus, aby "TEĎ" chvilku dávalo smysl
+      return sec !== null && sec > -90;
+    }
+
+    function bySoonest(a,b){
+      const sa = getDepSeconds(a);
+      const sb = getDepSeconds(b);
+      if (sa === null && sb === null) return 0;
+      if (sa === null) return 1;
+      if (sb === null) return -1;
+      return sa - sb;
+    }
+
+    // ===== RENDER =====
     function renderBig(elId, dep){
       const el = document.getElementById(elId);
+      const depSec = dep ? getDepSeconds(dep) : null;
 
-      const depInSec = getDepSeconds(dep);
-      if (depInSec === null){
+      if (depSec === null){
         el.innerHTML = `--<small>Vyjdi za</small>`;
         return;
       }
 
-      const leaveIn = depInSec - WALK_SECONDS;
+      const leaveIn = depSec - WALK_SECONDS;
 
-      if (leaveIn < LATE_THRESHOLD) {
-        el.innerHTML = `—<small>Nestíháš</small>`;
-      } else if (leaveIn <= 0) {
-        el.innerHTML = `TEĎ<small>Vyjdi</small>`;
-      } else {
-        el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
-      }
+      if (leaveIn < LATE_THRESHOLD) el.innerHTML = `—<small>Nestíháš</small>`;
+      else if (leaveIn <= 0) el.innerHTML = `TEĎ<small>Vyjdi</small>`;
+      else el.innerHTML = `${fmtMMSS(leaveIn)}<small>Vyjdi za</small>`;
     }
 
     function renderList(elId, items){
@@ -379,13 +397,10 @@
 
       el.innerHTML = items.map(d => {
         const head = d?.trip?.headsign ?? "—";
-        const depInSec = getDepSeconds(d);
+        const depSec = getDepSeconds(d);
+        if (depSec === null) return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
 
-        if (depInSec === null) {
-          return `<div class="row"><span>${head}</span><span class="time">—</span></div>`;
-        }
-
-        const leaveIn = depInSec - WALK_SECONDS;
+        const leaveIn = depSec - WALK_SECONDS;
 
         let right;
         if (leaveIn < LATE_THRESHOLD) right = `<span class="time">Nestíháš</span>`;
@@ -403,51 +418,40 @@
       renderList("listLet", lastLetList);
     }
 
-    function tickLeaveCountdowns() {
-
-  // ===== BIG čísla =====
-  renderBig("bigHaje", lastHaje);
-  renderBig("bigLet", lastLet);
-
-  // ===== seznamy =====
-  renderList("listHaje", lastHajeList);
-  renderList("listLet", lastLetList);
-
-}
-
-    async function loadDepartures() {
+    // ===== MAIN =====
+    async function loadDepartures(){
       try {
-        const res = await fetch(
-          "/api/departures?name=Pražského%20povst%C3%A1n%C3%AD",
-          { cache: "no-store" }
-        );
+        const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD", { cache: "no-store" });
         const json = await res.json();
 
-        // departures ze všech stops
-        const allDepartures = (json?.stops || []).flatMap(s => s?.departures || []);
+        const all = extractAllDepartures(json)
+          .filter(isMetroC)
+          .filter(validSoon)
+          .sort(bySoonest);
 
-        // Metro C poznáme podle směru (nejstabilnější)
-        const hajeAll = allDepartures.filter(d => /háje/i.test(d?.trip?.headsign || ""));
-        const letAll  = allDepartures.filter(d => /letňany/i.test(d?.trip?.headsign || ""));
+        const haje = all.filter(d => /háje/i.test(d?.trip?.headsign || "")).sort(bySoonest);
+        const letnany = all.filter(d => /letňany/i.test(d?.trip?.headsign || "")).sort(bySoonest);
 
-        const hajeSorted = sortBySoonest(hajeAll);
-        const letSorted  = sortBySoonest(letAll);
+        lastHaje = haje[0] || null;
+        lastLet = letnany[0] || null;
 
-        lastHaje = hajeSorted[0] || null;
-        lastLet  = letSorted[0] || null;
-
-        lastHajeList = hajeSorted.slice(0, 3);
-        lastLetList  = letSorted.slice(0, 3);
+        lastHajeList = haje.slice(0, 3);
+        lastLetList = letnany.slice(0, 3);
 
         tickLeaveCountdowns();
         setStatus(true, "Live data OK");
       } catch (e) {
         console.error(e);
-        setStatus(false, "Chyba dat / offline");
+        setStatus(false, "Chyba: " + (e?.message || "offline"));
       }
     }
 
-    // ===== START =====
+    // ===== hard error -> ukaž v pill =====
+    window.addEventListener("error", (ev) => {
+      setStatus(false, "JS error: " + (ev?.message || "unknown"));
+    });
+
+    // START
     tickClock();
     loadDepartures();
     tickLeaveCountdowns();
@@ -455,6 +459,7 @@
     setInterval(loadDepartures, FETCH_EVERY_MS);
     setInterval(tickClock, 1000);
     setInterval(tickLeaveCountdowns, 1000);
+  })();
   </script>
 </body>
 </html>
