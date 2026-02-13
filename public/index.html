@@ -1,22 +1,406 @@
 <!doctype html>
 <html lang="cs">
 <head>
-<meta charset="utf-8">
-<title>Metro displej</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="refresh" content="3600">
+  <title>Metro displej</title>
+
+  <style>
+    :root{
+      --bg1:#0b0f1c;
+      --bg2:#0a1228;
+      --glass: rgba(255,255,255,.08);
+      --glass2: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --good: rgba(52, 211, 153, .95);
+      --warn: rgba(251, 191, 36, .95);
+      --bad: rgba(248, 113, 113, .95);
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 28px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Roboto, Arial; color:var(--text); }
+    body{
+      background:
+        radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.28), transparent 60%),
+        radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,.22), transparent 55%),
+        radial-gradient(900px 700px at 60% 90%, rgba(56,189,248,.18), transparent 60%),
+        linear-gradient(140deg, var(--bg1), var(--bg2));
+      overflow:hidden;
+    }
+
+    .wrap{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+    }
+
+    .board{
+      width:min(1200px, 100%);
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:18px;
+    }
+
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .title h1{
+      margin:0;
+      font-size:28px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+
+    .title .sub{
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .pill{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      font-size:14px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .dot{
+      width:9px; height:9px; border-radius:999px; background: var(--good);
+      box-shadow: 0 0 0 6px rgba(52,211,153,.12);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:18px;
+    }
+
+    .card{
+      position:relative;
+      padding:22px;
+      border-radius: var(--radius);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(22px);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      min-height: 250px;
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-1px;
+      background:
+        radial-gradient(300px 200px at 20% 20%, rgba(255,255,255,.14), transparent 65%),
+        radial-gradient(260px 220px at 80% 10%, rgba(56,189,248,.18), transparent 60%),
+        radial-gradient(300px 260px at 70% 90%, rgba(79,70,229,.16), transparent 62%);
+      pointer-events:none;
+    }
+
+    .card > *{ position:relative; }
+
+    .head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+    }
+
+    .dir{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+
+    .dir .label{
+      color: var(--muted);
+      font-size: 14px;
+      letter-spacing:.2px;
+    }
+
+    .dir .name{
+      font-size: 24px;
+      font-weight: 750;
+    }
+
+    .big{
+      font-variant-numeric: tabular-nums;
+      font-size: 92px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing:-2px;
+      margin: 12px 0 14px;
+    }
+
+    .big small{
+      font-size: 26px;
+      color: var(--muted);
+      font-weight: 650;
+      letter-spacing:0;
+      margin-left: 10px;
+    }
+
+    .mini{
+      display:grid;
+      gap:10px;
+      margin-top:6px;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.08);
+      color: rgba(255,255,255,.78);
+      font-size: 16px;
+    }
+
+    .row .time{
+      color: rgba(255,255,255,.88);
+      font-variant-numeric: tabular-nums;
+      font-weight: 650;
+    }
+
+    .badge{
+      padding:6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing:.2px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.76);
+      white-space:nowrap;
+    }
+
+    .badge.good{ border-color: rgba(52,211,153,.35); background: rgba(52,211,153,.12); color: rgba(167,243,208,.95); }
+    .badge.warn{ border-color: rgba(251,191,36,.35); background: rgba(251,191,36,.12); color: rgba(253,230,138,.95); }
+    .badge.bad{  border-color: rgba(248,113,113,.35); background: rgba(248,113,113,.12); color: rgba(254,202,202,.95); }
+
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 0 4px;
+    }
+
+    @media (max-width: 900px){
+      .grid{ grid-template-columns: 1fr; }
+      .big{ font-size: 78px; }
+    }
+  </style>
 </head>
 
-<body style="
-background:black;
-color:white;
-font-family:Arial;
-display:flex;
-height:100vh;
-align-items:center;
-justify-content:center;
-font-size:60px;
-">
+<body>
+  <div class="wrap">
+    <div class="board">
+      <div class="top">
+        <div class="title">
+          <h1>Pražského povstání — Metro C</h1>
+          <div class="sub">Live odjezdy + odpočty • refresh každých 10 s</div>
+        </div>
 
-Metro displej běží ✅
+        <div class="pill" id="statusPill">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Načítám data…</span>
+          <span style="margin-left:10px; opacity:.7;" id="clock">--:--:--</span>
+        </div>
+      </div>
 
+      <div class="grid">
+        <div class="card">
+          <div class="head">
+            <div class="dir">
+              <div class="label">Směr</div>
+              <div class="name">Letňany</div>
+            </div>
+            <div class="badge" id="bLet">—</div>
+          </div>
+
+          <div class="big" id="bigLet">--<small>min</small></div>
+
+          <div class="mini" id="listLet">
+            <div class="row"><span>Načítám…</span><span class="time">—</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="head">
+            <div class="dir">
+              <div class="label">Směr</div>
+              <div class="name">Háje</div>
+            </div>
+            <div class="badge" id="bHaje">—</div>
+          </div>
+
+          <div class="big" id="bigHaje">--<small>min</small></div>
+
+          <div class="mini" id="listHaje">
+            <div class="row"><span>Načítám…</span><span class="time">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div id="metaLeft">Zdroj: Golemio PID</div>
+        <div id="metaRight">STOP: U699Z1P</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Stop ID, které jsi už ověřil JSONem
+    const STOP_ID = "U699Z1P";
+
+    // Jak často tahat nové predikce z API (ms)
+    const FETCH_EVERY = 10000;
+
+    // Interně: odjezdy (timestamps) pro směr Letňany / Háje
+    let nextLet = [];
+    let nextHaje = [];
+
+    const el = (id) => document.getElementById(id);
+
+    function pad(n){ return String(n).padStart(2,"0"); }
+
+    function setClock(){
+      const d = new Date();
+      el("clock").textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function badgeFor(min){
+      if (min === null) return ["—", "badge"];
+      if (min <= 2) return [`🚇 ${min} min`, "badge good"];
+      if (min <= 6) return [`⏳ ${min} min`, "badge warn"];
+      return [`🕒 ${min} min`, "badge"];
+    }
+
+    function minutesUntil(iso){
+      const t = new Date(iso).getTime();
+      const now = Date.now();
+      const diff = Math.max(0, t - now);
+      return Math.round(diff / 60000);
+    }
+
+    function fmtTime(iso){
+      const d = new Date(iso);
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function renderLists(){
+      // velká čísla = nejbližší odjezd
+      const letMin = nextLet.length ? minutesUntil(nextLet[0]) : null;
+      const hajeMin = nextHaje.length ? minutesUntil(nextHaje[0]) : null;
+
+      el("bigLet").innerHTML  = (letMin===null ? "--" : letMin) + "<small>min</small>";
+      el("bigHaje").innerHTML = (hajeMin===null ? "--" : hajeMin) + "<small>min</small>";
+
+      const [letTxt, letCls] = badgeFor(letMin);
+      const [hajeTxt, hajeCls] = badgeFor(hajeMin);
+
+      el("bLet").textContent = letTxt;  el("bLet").className = letCls;
+      el("bHaje").textContent = hajeTxt; el("bHaje").className = hajeCls;
+
+      // seznam dalších 4 odjezdů
+      const mkRows = (arr) => {
+        if (!arr.length) return `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
+        return arr.slice(0,4).map(iso => {
+          const m = minutesUntil(iso);
+          return `<div class="row"><span>Za ${m} min</span><span class="time">${fmtTime(iso)}</span></div>`;
+        }).join("");
+      };
+
+      el("listLet").innerHTML  = mkRows(nextLet);
+      el("listHaje").innerHTML = mkRows(nextHaje);
+    }
+
+    function setStatus(ok, msg){
+      el("statusText").textContent = msg;
+      el("statusDot").style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
+      el("statusDot").style.boxShadow = ok ? "0 0 0 6px rgba(52,211,153,.12)" : "0 0 0 6px rgba(248,113,113,.12)";
+    }
+
+    async function fetchDepartures(){
+      try{
+        const r = await fetch(`/api/departures?stop=${encodeURIComponent(STOP_ID)}&t=${Date.now()}`, { cache: "no-store" });
+        if (!r.ok) throw new Error("HTTP " + r.status);
+
+        const data = await r.json();
+
+        // data = { stops: [...], departures: [...] } (podle tvého JSONu)
+        const deps = Array.isArray(data.departures) ? data.departures : [];
+
+        // vyber jen metro C (route short_name "C" nebo "191" podle dat) – v praxi má metro často short_name "C"
+        // aby to bylo robustní, filtrujeme podle: stop_name == "stadion" a platform "A" (z tvého JSONu)
+        // a směry rozlišíme podle headsign obsahující "Letňany" nebo "Háje"
+        const letArr = [];
+        const hajeArr = [];
+
+        for (const d of deps){
+          const head = (d?.trip?.headsign || "").toLowerCase();
+
+          // vyber nejpřesnější timestamp: predicted -> scheduled
+          const depIso = d?.departure_timestamp?.predicted || d?.departure_timestamp?.scheduled;
+          if (!depIso) continue;
+
+          if (head.includes("letňany") || head.includes("letnany")) letArr.push(depIso);
+          if (head.includes("háje") || head.includes("haje")) hajeArr.push(depIso);
+        }
+
+        // seřadit podle času
+        letArr.sort((a,b)=> new Date(a)-new Date(b));
+        hajeArr.sort((a,b)=> new Date(a)-new Date(b));
+
+        nextLet = letArr;
+        nextHaje = hajeArr;
+
+        setStatus(true, "Live data OK");
+        renderLists();
+      }catch(e){
+        setStatus(false, "Chyba dat (zkusím znovu)");
+        // necháme poslední známé hodnoty a jen přerenderujeme odpočet
+        renderLists();
+      }
+    }
+
+    // Tick každou 1s: odpočty běží i mezi fetchi
+    setInterval(() => { setClock(); renderLists(); }, 1000);
+
+    // Fetch pravidelně
+    fetchDepartures();
+    setInterval(fetchDepartures, FETCH_EVERY);
+  </script>
 </body>
 </html>
