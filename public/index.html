@@ -281,75 +281,44 @@
   </div>
 
   <script>
-  const STOP_NAME = "Pražského povstání";
+const STOP_NAME = "Pražského povstání";
 
-  function setStatus(ok, text) {
-    const dot = document.getElementById("statusDot");
-    const status = document.getElementById("statusText");
-    dot.style.background = ok ? "rgba(52, 211, 153, .95)" : "rgba(248, 113, 113, .95)";
-    status.textContent = text;
+async function loadDepartures() {
+  try {
+    console.log("Fetching departures...");
+
+    const res = await fetch("/api/departures?name=" + encodeURIComponent(STOP_NAME));
+    const json = await res.json();
+
+    console.log("DATA:", json);
+
+    const all = (json?.stops || []).flatMap(s => s?.departures || []);
+
+    const metroC = all.filter(d =>
+      (d?.route?.short_name || "").toUpperCase() === "C"
+    );
+
+    const letnany = metroC.find(d =>
+      (d?.trip?.headsign || "").includes("Letňany")
+    );
+
+    const haje = metroC.find(d =>
+      (d?.trip?.headsign || "").includes("Háje")
+    );
+
+    document.getElementById("bigLet").innerHTML =
+      `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+
+    document.getElementById("bigHaje").innerHTML =
+      `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+
+  } catch (e) {
+    console.error("LOAD ERROR:", e);
   }
+}
 
-  function renderBig(id, minutes) {
-    document.getElementById(id).innerHTML = `${minutes ?? "--"}<small>min</small>`;
-  }
-
-  function renderList(id, items) {
-    const el = document.getElementById(id);
-    if (!items.length) {
-      el.innerHTML = `<div class="row"><span>Žádná data</span><span class="time">—</span></div>`;
-      return;
-    }
-    el.innerHTML = items
-      .slice(0, 4)
-      .map(d => {
-        const m = d?.departure_timestamp?.minutes ?? "—";
-        const t = d?.departure_timestamp?.predicted || d?.departure_timestamp?.scheduled || "";
-        return `<div class="row"><span>${d?.trip?.headsign ?? "—"}</span><span class="time">${m} min</span></div>`;
-      })
-      .join("");
-  }
-
-  async function loadDepartures() {
-    try {
-      setStatus(true, "Načítám data…");
-
-      const res = await fetch(`/api/departures?name=${encodeURIComponent(STOP_NAME)}`);
-      const json = await res.json();
-
-      const departures = json?.stops?.[0]?.departures || [];
-
-      // Metro C: směry Letňany / Háje
-      const letnanyList = departures.filter(d => (d.trip?.headsign || "").includes("Letňany"));
-      const hajeList = departures.filter(d => (d.trip?.headsign || "").includes("Háje"));
-
-      renderBig("bigLet", letnanyList[0]?.departure_timestamp?.minutes);
-      renderBig("bigHaje", hajeList[0]?.departure_timestamp?.minutes);
-
-      renderList("listLet", letnanyList);
-      renderList("listHaje", hajeList);
-
-      setStatus(true, "Live data OK");
-    } catch (e) {
-      console.error(e);
-      setStatus(false, "Chyba načítání");
-      renderBig("bigLet", null);
-      renderBig("bigHaje", null);
-      renderList("listLet", []);
-      renderList("listHaje", []);
-    }
-  }
-
-  function tickClock() {
-    const now = new Date();
-    document.getElementById("clock").textContent = now.toLocaleTimeString("cs-CZ");
-  }
-
-  tickClock();
-  setInterval(tickClock, 1000);
-
-  loadDepartures();
-  setInterval(loadDepartures, 10000);
+loadDepartures();
+setInterval(loadDepartures, 10000);
 </script>
 </body>
 </html>
