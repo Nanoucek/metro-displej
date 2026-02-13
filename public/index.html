@@ -281,52 +281,48 @@
   </div>
 
   <script>
-const STOP_NAME = "Pražského povstání";
-
 async function loadDepartures() {
   try {
-    console.log("Fetching departures...");
-
-    const res = await fetch("/api/departures?name=" + encodeURIComponent(STOP_NAME));
+    const res = await fetch("/api/departures?name=Pražského%20povst%C3%A1n%C3%AD");
     const json = await res.json();
 
-    console.log("DATA:", json);
-
+    // seber všechny departures ze všech stop
     const all = (json?.stops || []).flatMap(s => s?.departures || []);
 
-// jen metro C
-const metroC = all.filter(d =>
-  (d?.route?.short_name || "").toUpperCase() === "C"
-);
+    // jen Metro C
+    const metroC = all.filter(d => (d?.route?.short_name || "").toUpperCase() === "C");
 
-// DEBUG — uvidíš směry
-console.log(
-  metroC.map(d => d.trip?.headsign)
-);
+    // směry
+    const haje = metroC.find(d => /háje/i.test(d?.trip?.headsign || ""));
+    const letnany = metroC.find(d => /letňany/i.test(d?.trip?.headsign || ""));
 
-// směr Letňany
-const letnany = metroC.find(d =>
-  /letňany/i.test(d?.trip?.headsign || "")
-);
+    // vyplnit velké odpočty
+    document.getElementById("bigHaje").innerHTML =
+      `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+    document.getElementById("bigLet").innerHTML =
+      `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
 
-// směr Háje
-const haje = metroC.find(d =>
-  /háje/i.test(d?.trip?.headsign || "")
-);
-
-document.getElementById("bigLet").innerHTML =
-  `${letnany?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
-
-document.getElementById("bigHaje").innerHTML =
-  `${haje?.departure_timestamp?.minutes ?? "--"}<small>min</small>`;
+    // status pill
+    document.getElementById("statusText").textContent = "Live data OK";
+    document.getElementById("statusDot").style.background = "rgba(52, 211, 153, .95)";
 
   } catch (e) {
-    console.error("LOAD ERROR:", e);
+    console.error(e);
+    document.getElementById("statusText").textContent = "Chyba dat";
+    document.getElementById("statusDot").style.background = "rgba(248, 113, 113, .95)";
   }
 }
 
+function tickClock(){
+  const d = new Date();
+  document.getElementById("clock").textContent =
+    d.toLocaleTimeString("cs-CZ", { hour12:false });
+}
+
 loadDepartures();
+tickClock();
 setInterval(loadDepartures, 10000);
+setInterval(tickClock, 1000);
 </script>
 </body>
 </html>
