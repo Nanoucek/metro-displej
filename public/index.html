@@ -151,7 +151,7 @@
     }
 
     .dir .name{
-      font-size: 28px; /* trochu větší pro Háje/Letňany */
+      font-size: 28px;
       font-weight: 800;
     }
 
@@ -167,6 +167,7 @@
       white-space:nowrap;
       text-align:right;
       line-height: 1.35;
+      min-width: 56px;
     }
 
     .bigLabel{
@@ -176,7 +177,6 @@
       font-size: 14px;
     }
 
-    /* “Vyjdi za -- min a -- sek” menší než předtím */
     .big{
       font-variant-numeric: tabular-nums;
       font-size: 56px;
@@ -194,7 +194,6 @@
       font-size: 14px;
     }
 
-    /* Pozdější časy bez rámečku */
     .mini{
       display:grid;
       gap:6px;
@@ -214,12 +213,6 @@
       font-variant-numeric: tabular-nums;
       font-weight: 750;
       white-space:nowrap;
-    }
-    .plainRow .sub{
-      color: rgba(255,255,255,.62);
-      font-variant-numeric: tabular-nums;
-      white-space:nowrap;
-      margin-left: 10px;
     }
 
     .footer{
@@ -286,7 +279,7 @@
               <div class="label">Směr</div>
               <div class="name">Letňany</div>
             </div>
-            <div class="badge" id="bLet">Načítám…</div>
+            <div class="badge" id="bLet">—</div>
           </div>
 
           <div class="bigLabel">Vyjdi za</div>
@@ -305,7 +298,7 @@
               <div class="label">Směr</div>
               <div class="name">Háje</div>
             </div>
-            <div class="badge" id="bHaje">Načítám…</div>
+            <div class="badge" id="bHaje">—</div>
           </div>
 
           <div class="bigLabel">Vyjdi za</div>
@@ -326,194 +319,199 @@
   </div>
 
   <script>
-const STOP_NAME = "Pražského povstání";
-const WALK_SECONDS = 240; // 4 min chůze
-const REFRESH_MS = 10000;
+    const STOP_NAME = "Pražského povstání";
+    const WALK_SECONDS = 240; // 4 min chůze
+    const REFRESH_MS = 10000;
 
-const UI = {
-  let: { badge: "bLet", big: "bigLet", list: "listLet" },
-  haje:{ badge: "bHaje", big: "bigHaje", list: "listHaje" },
-  statusText: "statusText",
-  statusDot: "statusDot",
-  clock: "clock"
-};
+    const UI = {
+      let:  { badge:"bLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
+      haje: { badge:"bHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
+      statusText:"statusText",
+      statusDot:"statusDot",
+      clock:"clock"
+    };
 
-const $ = id => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
 
-let nextLet = null;
-let nextHaje = null;
+    // uložené seznamy odjezdů (pro realtime přepínání na další spoj)
+    let depsLet = [];
+    let depsHaje = [];
 
-/* ================= STATUS ================= */
+    function pad2(n){ return String(n).padStart(2,"0"); }
 
-function setPill(ok, text) {
-  const t = $(UI.statusText);
-  const dot = $(UI.statusDot);
+    function setPill(ok, text){
+      const t = $(UI.statusText);
+      const dot = $(UI.statusDot);
+      if (t) t.textContent = text;
+      if (dot){
+        dot.style.background = ok ? "rgba(52,211,153,.95)" : "rgba(248,113,113,.95)";
+        dot.style.boxShadow = ok
+          ? "0 0 0 6px rgba(52,211,153,.12)"
+          : "0 0 0 6px rgba(248,113,113,.12)";
+      }
+    }
 
-  if (t) t.textContent = text;
+    function tickClock(){
+      const el = $(UI.clock);
+      if (!el) return;
+      const d = new Date();
+      el.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    }
 
-  if (dot) {
-    dot.style.background = ok
-      ? "rgba(52,211,153,.95)"
-      : "rgba(248,113,113,.95)";
-  }
-}
+    function parseIso(iso){
+      if(!iso) return null;
+      const d = new Date(iso);
+      return Number.isFinite(d.getTime()) ? d : null;
+    }
 
-/* ================= CLOCK ================= */
+    function getDepDate(dep){
+      return parseIso(dep?.departure_timestamp?.predicted || dep?.departure_timestamp?.scheduled);
+    }
 
-function pad2(n){ return String(n).padStart(2,"0"); }
+    function diffSeconds(date){
+      return Math.round((date.getTime() - Date.now()) / 1000);
+    }
 
-function tickClock(){
-  const el = $(UI.clock);
-  if (!el) return;
+    function formatHHMM(date){
+      if(!date) return "—";
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
 
-  const d = new Date();
-  el.textContent =
-    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-}
+    // vezme nejbližší budoucí spoj (když 1. je už pryč, skočí na další)
+    function pickNextFuture(deps){
+      const now = Date.now();
+      for (const d of deps){
+        const dt = getDepDate(d);
+        if (dt && dt.getTime() > now) return { dep:d, dt };
+      }
+      return { dep:null, dt:null };
+    }
 
-/* ================= TIME HELPERS ================= */
+    function renderBadge(elId, date){
+      const el = $(elId);
+      if(!el) return;
+      el.textContent = formatHHMM(date);
+    }
 
-function parseIso(iso){
-  if(!iso) return null;
-  const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d : null;
-}
+    function renderBig(dir, date){
+      const el = $(dir.big);
+      const card = $(dir.card);
+      if(!el) return;
 
-function diffSeconds(date){
-  return Math.round((date - new Date()) / 1000);
-}
+      if(!date){
+        el.textContent = "-- min a -- sek";
+        if(card) card.classList.remove("go-now");
+        return;
+      }
 
-function formatMinSec(sec){
-  sec = Math.max(0, sec);
-  return {
-    m: Math.floor(sec/60),
-    s: sec % 60
-  };
-}
+      const leaveSec = diffSeconds(date) - WALK_SECONDS;
 
-function formatHHMM(date){
-  if(!date) return "—";
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-}
+      // ✅ VYJDI TEĎ + pulzování
+      if(leaveSec <= 0){
+        el.textContent = "VYJDI TEĎ";
+        if(card) card.classList.add("go-now");
+        return;
+      }
 
-/* ================= UI RENDER ================= */
+      if(card) card.classList.remove("go-now");
 
-function renderBig(elId, date){
-  const el = $(elId);
-  if(!el) return;
+      const m = Math.floor(leaveSec/60);
+      const s = leaveSec % 60;
+      el.textContent = `${m} min a ${pad2(s)} sek`;
+    }
 
-  if(!date){
-    el.textContent="-- min a -- sek";
-    return;
-  }
+    function renderList(elId, deps){
+      const el = $(elId);
+      if(!el) return;
 
-  const leave = formatMinSec(diffSeconds(date)-WALK_SECONDS);
-  el.textContent = `${leave.m} min a ${pad2(leave.s)} sek`;
-}
+      const now = Date.now();
 
-function renderBadge(elId, date){
-  const el = $(elId);
-  if(!el) return;
+      const future = deps.filter(d=>{
+        const dt = getDepDate(d);
+        return dt && dt.getTime() > now;
+      });
 
-  el.textContent = formatHHMM(date);
-}
+      if(!future.length){
+        el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="time">—</span></div>`;
+        return;
+      }
 
-function renderList(elId, deps){
-  const el=$(elId);
-  if(!el) return;
+      el.innerHTML = future.slice(0,3).map(d=>{
+        const dt = getDepDate(d);
+        const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
+        return `
+          <div class="plainRow">
+            <span>${d?.trip?.headsign || "—"}</span>
+            <span class="time">${mins} min</span>
+          </div>`;
+      }).join("");
+    }
 
-  if(!deps.length){
-    el.innerHTML =
-      `<div class="plainRow"><span>Žádná data</span><span class="time">—</span></div>`;
-    return;
-  }
+    async function loadDepartures(){
+      try{
+        setPill(true, "Načítám data…");
 
-  el.innerHTML = deps.slice(0,3).map(d=>{
-    const dt=parseIso(
-      d?.departure_timestamp?.predicted ||
-      d?.departure_timestamp?.scheduled
-    );
+        const res = await fetch(`/api/departures?name=${encodeURIComponent(STOP_NAME)}`, { cache:"no-store" });
+        const json = await res.json();
 
-    const mins = dt
-      ? Math.max(0,Math.floor(diffSeconds(dt)/60))
-      : "—";
+        const departures = Array.isArray(json?.departures) ? json.departures : [];
 
-    return `
-      <div class="plainRow">
-        <span>${d?.trip?.headsign || "—"}</span>
-        <span class="time">${mins} min</span>
-      </div>`;
-  }).join("");
-}
+        // jen Metro C
+        const metroC = departures.filter(d => d?.route?.short_name === "C");
 
-/* ================= API ================= */
+        // seřadit podle času (kvůli jistotě)
+        metroC.sort((a,b)=>{
+          const da = getDepDate(a)?.getTime() ?? 0;
+          const db = getDepDate(b)?.getTime() ?? 0;
+          return da - db;
+        });
 
-async function loadDepartures(){
-  try{
-    setPill(true,"Načítám data…");
+        depsLet = metroC.filter(d =>
+          (d?.trip?.headsign || "").includes("Letňany") || d?.stop?.platform_code === "1"
+        );
 
-    const res = await fetch(
-      `/api/departures?name=${encodeURIComponent(STOP_NAME)}`,
-      {cache:"no-store"}
-    );
+        depsHaje = metroC.filter(d =>
+          (d?.trip?.headsign || "").includes("Háje") || d?.stop?.platform_code === "2"
+        );
 
-    const json = await res.json();
-    const departures = json?.departures || [];
+        // pozdější časy (reálně se přepočítávají realtimeUpdate)
+        renderList(UI.let.list, depsLet.slice(1));
+        renderList(UI.haje.list, depsHaje.slice(1));
 
-    const metroC = departures.filter(
-      d=>d?.route?.short_name==="C"
-    );
+        setPill(true, "Live data OK");
+      }catch(e){
+        console.error(e);
+        setPill(false, "Chyba API");
+        depsLet = [];
+        depsHaje = [];
+      }
+    }
 
-    const toLetnany = metroC.filter(
-      d => (d.trip?.headsign||"").includes("Letňany")
-        || d.stop?.platform_code==="1"
-    );
+    function realtimeUpdate(){
+      // pokaždé vezmi nejbližší budoucí (aby to po odjezdu hned skočilo dál)
+      const nextL = pickNextFuture(depsLet);
+      const nextH = pickNextFuture(depsHaje);
 
-    const toHaje = metroC.filter(
-      d => (d.trip?.headsign||"").includes("Háje")
-        || d.stop?.platform_code==="2"
-    );
+      renderBadge(UI.let.badge, nextL.dt);
+      renderBadge(UI.haje.badge, nextH.dt);
 
-    nextLet = parseIso(
-      toLetnany[0]?.departure_timestamp?.predicted ||
-      toLetnany[0]?.departure_timestamp?.scheduled
-    );
+      renderBig(UI.let, nextL.dt);
+      renderBig(UI.haje, nextH.dt);
 
-    nextHaje = parseIso(
-      toHaje[0]?.departure_timestamp?.predicted ||
-      toHaje[0]?.departure_timestamp?.scheduled
-    );
+      // přepočet pozdějších časů (ať jsou “živé”)
+      renderList(UI.let.list, depsLet.slice(1));
+      renderList(UI.haje.list, depsHaje.slice(1));
+    }
 
-    renderBadge(UI.let.badge,nextLet);
-    renderBadge(UI.haje.badge,nextHaje);
+    // START
+    tickClock();
+    setInterval(tickClock, 1000);
 
-    renderList(UI.let.list,toLetnany.slice(1));
-    renderList(UI.haje.list,toHaje.slice(1));
+    loadDepartures();
+    setInterval(loadDepartures, REFRESH_MS);
 
-    setPill(true,"Live data OK");
-
-  }catch(e){
-    console.error(e);
-    setPill(false,"Chyba API");
-  }
-}
-
-/* ================= REALTIME LOOP ================= */
-
-function realtimeUpdate(){
-  renderBig(UI.let.big,nextLet);
-  renderBig(UI.haje.big,nextHaje);
-}
-
-/* ================= START ================= */
-
-tickClock();
-setInterval(tickClock,1000);
-
-loadDepartures();
-setInterval(loadDepartures,REFRESH_MS);
-
-setInterval(realtimeUpdate,1000);
-</script>
+    realtimeUpdate();
+    setInterval(realtimeUpdate, 1000);
+  </script>
 </body>
 </html>
