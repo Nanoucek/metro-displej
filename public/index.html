@@ -78,7 +78,6 @@
       gap:10px;
     }
 
-    /* ===== APPLE-LIKE HEADLINE ===== */
     .title h1{
       margin:0;
       font-size:48px;
@@ -86,13 +85,7 @@
       letter-spacing:-0.9px;
       line-height:1.04;
       color:rgba(255,255,255,.96);
-
-      /* jemný Apple gradient */
-      background: linear-gradient(
-        180deg,
-        rgba(255,255,255,1),
-        rgba(255,255,255,.78)
-      );
+      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.78));
       -webkit-background-clip:text;
       -webkit-text-fill-color:transparent;
     }
@@ -134,8 +127,7 @@
       position:relative;
       padding:22px;
       border-radius: var(--radius);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
       border: 1px solid rgba(255,255,255,.14);
       backdrop-filter: blur(22px);
       box-shadow: var(--shadow);
@@ -181,7 +173,6 @@
       font-weight: 800;
     }
 
-    /* Badge stack: čas + 1 jediný stavový čip */
     .badgeStack{
       display:flex;
       flex-direction:column;
@@ -189,7 +180,6 @@
       gap:8px;
     }
 
-    /* Čas: bez “bubliny” */
     .arrivalLabel{
       font-size:12px;
       color:rgba(255,255,255,.55);
@@ -206,7 +196,6 @@
       line-height:1.05;
     }
 
-    /* Jediná bublina = stav */
     .delayChip{
       padding:6px 10px;
       border-radius: 999px;
@@ -247,6 +236,19 @@
       font-weight: 900;
       letter-spacing:-1px;
       margin: 6px 0 12px;
+      transform: translateZ(0);
+      will-change: transform, filter, text-shadow;
+    }
+
+    .big.soon{
+      animation: appleSoon 1.25s ease-in-out infinite;
+      filter: drop-shadow(0 10px 26px rgba(255,255,255,.06));
+      text-shadow: 0 2px 24px rgba(255,255,255,.06);
+    }
+    @keyframes appleSoon{
+      0%{ transform: translateY(0) scale(1); }
+      50%{ transform: translateY(-1px) scale(1.01); }
+      100%{ transform: translateY(0) scale(1); }
     }
 
     .sectionTitle{
@@ -263,19 +265,33 @@
       margin-top:10px;
     }
 
+    /* ✅ řádek s HH:MM + X min */
     .plainRow{
-      display:flex;
-      justify-content:space-between;
+      display:grid;
+      grid-template-columns: 1fr auto auto;
+      align-items:center;
       gap:12px;
       padding:4px 0;
       color: rgba(255,255,255,.78);
       font-size: 14px;
     }
-    .plainRow .time{
-      color: rgba(255,255,255,.9);
+
+    .plainRow .at{
+      color: rgba(255,255,255,.68);
       font-variant-numeric: tabular-nums;
       font-weight: 750;
       white-space:nowrap;
+      min-width: 52px;
+      text-align:right;
+    }
+
+    .plainRow .time{
+      color: rgba(255,255,255,.92);
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+      white-space:nowrap;
+      min-width: 54px;
+      text-align:right;
     }
 
     .footer{
@@ -292,16 +308,10 @@
       .big{ font-size: 46px; }
       .dir .name{ font-size: 26px; }
 
-      .title h1{
-        font-size:36px;
-        letter-spacing:-0.6px;
-      }
-      .title .sub{
-        font-size:14px;
-      }
+      .title h1{ font-size:36px; letter-spacing:-0.6px; }
+      .title .sub{ font-size:14px; }
     }
 
-    /* ===== Glow při “Vyjdi teď” (max 15 s) ===== */
     .card.go-now{
       animation: glowPulse 1.6s ease-in-out infinite;
       border-color: rgba(52,211,153,.55);
@@ -343,14 +353,12 @@
       </div>
 
       <div class="grid">
-        <!-- LETŇANY -->
         <div class="card" id="cardLet">
           <div class="head">
             <div class="dir">
               <div class="label">Směr</div>
               <div class="name">Letňany</div>
             </div>
-
             <div class="badgeStack">
               <div class="arrivalLabel">Čas příjezdu</div>
               <div class="arrivalTime" id="bLet">--:--</div>
@@ -363,18 +371,16 @@
 
           <div class="sectionTitle">POZDĚJŠÍ ČASY PŘÍJEZDU</div>
           <div class="mini" id="listLet">
-            <div class="plainRow"><span>Načítám…</span><span class="time">—</span></div>
+            <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
           </div>
         </div>
 
-        <!-- HÁJE -->
         <div class="card" id="cardHaje">
           <div class="head">
             <div class="dir">
               <div class="label">Směr</div>
               <div class="name">Háje</div>
             </div>
-
             <div class="badgeStack">
               <div class="arrivalLabel">Čas příjezdu</div>
               <div class="arrivalTime" id="bHaje">--:--</div>
@@ -387,7 +393,7 @@
 
           <div class="sectionTitle">POZDĚJŠÍ ČASY PŘÍJEZDU</div>
           <div class="mini" id="listHaje">
-            <div class="plainRow"><span>Načítám…</span><span class="time">—</span></div>
+            <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
           </div>
         </div>
       </div>
@@ -401,10 +407,11 @@
 
   <script>
   const STOP_NAME = "Pražského povstání";
-  const WALK_SECONDS = 240;           // 4 min chůze
-  const REFRESH_MS = 10000;           // sync dat
-  const GO_NOW_MAX_SECONDS = 15;      // max 15 s “VYJDI TEĎ”
-  const ON_TIME_TOLERANCE_S = 15;     // “na čas” do ±15 s, “zpoždění” až od +16 s
+  const WALK_SECONDS = 240;
+  const REFRESH_MS = 10000;
+  const GO_NOW_MAX_SECONDS = 15;
+  const ON_TIME_TOLERANCE_S = 15;
+  const SOON_THRESHOLD_S = 30;
 
   const UI = {
     let:  { badge:"bLet",  chip:"dLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
@@ -416,7 +423,6 @@
 
   const $ = (id) => document.getElementById(id);
 
-  // seznamy odjezdů (kvůli realtime přepínání na další spoj)
   let depsLet = [];
   let depsHaje = [];
 
@@ -454,11 +460,9 @@
   }
 
   function getDelaySeconds(dep){
-    // 1) preferuj přímo delay.seconds (může být i záporný)
     const ds = dep?.delay?.seconds;
     if (typeof ds === "number" && Number.isFinite(ds)) return Math.round(ds);
 
-    // 2) fallback: predicted - scheduled
     const p = parseIso(dep?.departure_timestamp?.predicted);
     const s = parseIso(dep?.departure_timestamp?.scheduled);
     if (p && s) return Math.round((p.getTime() - s.getTime()) / 1000);
@@ -476,9 +480,6 @@
   }
 
   function formatDelayText(delaySec){
-    // “dřív” nikdy nepsat
-    // “na čas” do ±15 s
-    // “zpoždění” až od +16 s
     if (delaySec >= (ON_TIME_TOLERANCE_S + 1)) {
       const s = delaySec;
       const m = Math.floor(s / 60);
@@ -494,13 +495,12 @@
     if(!el) return;
 
     const isDelay = delaySec >= (ON_TIME_TOLERANCE_S + 1);
-
     el.textContent = formatDelayText(delaySec);
+
     el.classList.remove("onTime","late");
     el.classList.add(isDelay ? "late" : "onTime");
   }
 
-  // vybere nejbližší “relevantní” spoj
   function pickNextRelevant(deps){
     const now = Date.now();
 
@@ -532,11 +532,15 @@
     const card = $(dir.card);
     if(!el) return;
 
+    el.classList.remove("soon");
+
     if(leaveSec === null){
       el.textContent = "-- min a -- sek";
       if(card) card.classList.remove("go-now");
       return;
     }
+
+    if (leaveSec > 0 && leaveSec < SOON_THRESHOLD_S) el.classList.add("soon");
 
     if(leaveSec <= 0){
       const over = -leaveSec;
@@ -555,6 +559,7 @@
     el.textContent = `${m} min a ${pad2(sec)} sek`;
   }
 
+  /* ✅ POZDĚJŠÍ ČASY: přidá HH:MM vlevo od “X min” */
   function renderList(elId, deps){
     const el = $(elId);
     if(!el) return;
@@ -564,20 +569,22 @@
     const future = deps
       .map(dep => ({ dep, dt: getDepDate(dep) }))
       .filter(x => x.dt && x.dt.getTime() > now)
-      .sort((a,b) => a.dt - b.dt)
-      .map(x => x.dep);
+      .sort((a,b) => a.dt - b.dt);
 
     if(!future.length){
-      el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="time">—</span></div>`;
+      el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="at">—</span><span class="time">—</span></div>`;
       return;
     }
 
-    el.innerHTML = future.slice(0,3).map(dep=>{
-      const dt = getDepDate(dep);
+    el.innerHTML = future.slice(0,3).map(x=>{
+      const dt = x.dt;
       const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
+      const hhmm = dt ? formatHHMM(dt) : "—";
+
       return `
         <div class="plainRow">
-          <span>${dep?.trip?.headsign || "—"}</span>
+          <span>${x.dep?.trip?.headsign || "—"}</span>
+          <span class="at">${hhmm}</span>
           <span class="time">${mins} min</span>
         </div>`;
     }).join("");
@@ -591,11 +598,8 @@
       const json = await res.json();
 
       const departures = Array.isArray(json?.departures) ? json.departures : [];
-
-      // jen Metro C
       const metroC = departures.filter(d => d?.route?.short_name === "C");
 
-      // seřadit podle času (predicted/scheduled)
       metroC.sort((a,b)=>{
         const da = getDepDate(a)?.getTime() ?? 0;
         const db = getDepDate(b)?.getTime() ?? 0;
@@ -635,7 +639,6 @@
     renderList(UI.haje.list, depsHaje.slice(1));
   }
 
-  // START
   setPill(true);
   tickClock();
   setInterval(tickClock, 1000);
@@ -648,4 +651,3 @@
   </script>
 </body>
 </html>
- 
