@@ -367,240 +367,266 @@
   </div>
 
   <script>
-    const STOP_NAME = "Pražského povstání";
-    const WALK_SECONDS = 240;           // 4 min chůze
-    const REFRESH_MS = 10000;           // sync dat
-    const GO_NOW_MAX_SECONDS = 15;      // max 15 s “VYJDI TEĎ”
+  const STOP_NAME = "Pražského povstání";
+  const WALK_SECONDS = 240;           // 4 min chůze
+  const REFRESH_MS = 10000;           // sync dat
+  const GO_NOW_MAX_SECONDS = 15;      // max 15 s “VYJDI TEĎ”
+  const ON_TIME_TOLERANCE_S = 15;     // “na čas” do ±15 s, “zpoždění” až od +16 s
 
-    const UI = {
-      let:  { time:"bLet",  delay:"dLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
-      haje: { time:"bHaje", delay:"dHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
-      statusText:"statusText",
-      statusDot:"statusDot",
-      clock:"clock"
-    };
+  const UI = {
+    let:  { badge:"bLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
+    haje: { badge:"bHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
+    statusText:"statusText",
+    statusDot:"statusDot",
+    clock:"clock"
+  };
 
-    const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
 
-    let depsLet = [];
-    let depsHaje = [];
+  // seznamy odjezdů (kvůli realtime přepínání na další spoj)
+  let depsLet = [];
+  let depsHaje = [];
 
-    function pad2(n){ return String(n).padStart(2,"0"); }
+  function pad2(n){ return String(n).padStart(2,"0"); }
 
-    function setPill(ok, text){
-      const t = $(UI.statusText);
-      const dot = $(UI.statusDot);
-      if (t) t.textContent = text;
-      if (dot){
-        dot.style.background = ok ? "rgba(52,211,153,.95)" : "rgba(248,113,113,.95)";
-        dot.style.boxShadow = ok
-          ? "0 0 0 6px rgba(52,211,153,.12)"
-          : "0 0 0 6px rgba(248,113,113,.12)";
-      }
+  function setPill(ok){
+    const t = $(UI.statusText);
+    const dot = $(UI.statusDot);
+
+    if (t) t.textContent = ok ? "AKTUÁLNÍ ČAS" : "CHYBA API";
+
+    if (dot){
+      dot.style.background = ok ? "rgba(52,211,153,.95)" : "rgba(248,113,113,.95)";
+      dot.style.boxShadow = ok
+        ? "0 0 0 6px rgba(52,211,153,.12)"
+        : "0 0 0 6px rgba(248,113,113,.12)";
+    }
+  }
+
+  function tickClock(){
+    const el = $(UI.clock);
+    if (!el) return;
+    const d = new Date();
+    el.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+
+  function parseIso(iso){
+    if(!iso) return null;
+    const d = new Date(iso);
+    return Number.isFinite(d.getTime()) ? d : null;
+  }
+
+  function getDepDate(dep){
+    return parseIso(dep?.departure_timestamp?.predicted || dep?.departure_timestamp?.scheduled);
+  }
+
+  function getDelaySeconds(dep){
+    // 1) preferuj přímo delay.seconds (může být i záporný)
+    const ds = dep?.delay?.seconds;
+    if (typeof ds === "number" && Number.isFinite(ds)) return Math.round(ds);
+
+    // 2) fallback: predicted - scheduled
+    const p = parseIso(dep?.departure_timestamp?.predicted);
+    const s = parseIso(dep?.departure_timestamp?.scheduled);
+    if (p && s) return Math.round((p.getTime() - s.getTime()) / 1000);
+
+    return 0;
+  }
+
+  function diffSeconds(date){
+    return Math.round((date.getTime() - Date.now()) / 1000);
+  }
+
+  function formatHHMM(date){
+    if(!date) return "—";
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+
+  function formatDelayText(delaySec){
+    // ✅ “dřív” nikdy neukazovat
+    // ✅ “na čas” do ±15 s (tj. i když je záporný delay)
+    // ✅ “zpoždění” až od +16 s
+    if (delaySec >= (ON_TIME_TOLERANCE_S + 1)) {
+      const s = delaySec;
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      if (m > 0) return `zpoždění ${m} min ${r} s`;
+      return `zpoždění ${r} s`;
+    }
+    return "na čas";
+  }
+
+  // vybere nejbližší “relevantní” spoj
+  // - pokud jsme v “VYJDI TEĎ” déle než 15 s -> spoj přeskočí
+  // - jinak vezme první budoucí odjezd
+  function pickNextRelevant(deps){
+    const now = Date.now();
+
+    for (const dep of deps){
+      const dt = getDepDate(dep);
+      if (!dt) continue;
+
+      const depSec = Math.round((dt.getTime() - now) / 1000);
+      const leaveSec = depSec - WALK_SECONDS;
+
+      // odjezd už je pryč -> přeskočit
+      if (depSec <= 0) continue;
+
+      // jsme “po čase odchodu” více než 15 s -> přeskočit
+      if (leaveSec <= -GO_NOW_MAX_SECONDS) continue;
+
+      const delaySec = getDelaySeconds(dep);
+      return { dep, dt, leaveSec, delaySec };
     }
 
-    function tickClock(){
-      const el = $(UI.clock);
-      if (!el) return;
-      const d = new Date();
-      el.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-    }
+    return { dep:null, dt:null, leaveSec:null, delaySec:0 };
+  }
 
-    function parseIso(iso){
-      if(!iso) return null;
-      const d = new Date(iso);
-      return Number.isFinite(d.getTime()) ? d : null;
-    }
+  // Badge = čas odjezdu + pod tím malý chip se stavem (na čas / zpoždění)
+  function renderBadge(badgeId, date, delaySec){
+    const el = $(badgeId);
+    if(!el) return;
 
-    function getDepDate(dep){
-      return parseIso(dep?.departure_timestamp?.predicted || dep?.departure_timestamp?.scheduled);
-    }
+    const time = formatHHMM(date);
+    const delayText = formatDelayText(delaySec);
 
-    function diffSeconds(date){
-      return Math.round((date.getTime() - Date.now()) / 1000);
-    }
+    // Bez barvy času (jen čistý text). Chip je odděleně.
+    el.innerHTML = `
+      <div style="font-weight:800; font-variant-numeric:tabular-nums;">${time}</div>
+      <div style="
+        margin-top:6px;
+        display:inline-flex;
+        align-items:center;
+        padding:4px 10px;
+        border-radius:999px;
+        border:1px solid rgba(255,255,255,.14);
+        background: rgba(255,255,255,.06);
+        color: rgba(255,255,255,.78);
+        font-weight:700;
+        font-size:12px;
+        line-height:1.2;
+        white-space:nowrap;
+      ">${delayText}</div>
+    `;
+  }
 
-    function formatHHMM(date){
-      if(!date) return "--:--";
-      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-    }
+  function renderBig(dir, leaveSec){
+    const el = $(dir.big);
+    const card = $(dir.card);
+    if(!el) return;
 
-    function getDelaySeconds(dep){
-      const sec = dep?.delay?.seconds;
-      if (Number.isFinite(sec)) return sec;
-
-      const pred = parseIso(dep?.departure_timestamp?.predicted);
-      const sch  = parseIso(dep?.departure_timestamp?.scheduled);
-      if (pred && sch) return Math.round((pred - sch) / 1000);
-
-      return 0;
-    }
-
-    function describeDelay(sec){
-      if (!Number.isFinite(sec) || sec === 0) return { cls:"onTime", text:"na čas" };
-
-      const abs = Math.abs(sec);
-      const isMin = abs >= 60;
-      const value = isMin ? Math.round(abs/60) : abs;
-
-      if (sec > 0){
-        return { cls:"late", text: `zpoždění ${value} ${isMin ? "min" : "s"}` };
-      }else{
-        return { cls:"early", text: `dřív o ${value} ${isMin ? "min" : "s"}` };
-      }
-    }
-
-    function pickNextRelevant(deps){
-      const now = Date.now();
-
-      for (const d of deps){
-        const dt = getDepDate(d);
-        if (!dt) continue;
-
-        const depSec = Math.round((dt.getTime() - now) / 1000);
-        const leaveSec = depSec - WALK_SECONDS;
-
-        if (depSec <= 0) continue;
-        if (leaveSec <= -GO_NOW_MAX_SECONDS) continue;
-
-        return { dep:d, dt, leaveSec };
-      }
-
-      return { dep:null, dt:null, leaveSec:null };
-    }
-
-    function renderTime(dir, dt){
-      const el = $(dir.time);
-      if (!el) return;
-      el.textContent = formatHHMM(dt);
-    }
-
-    function renderDelay(dir, dep){
-      const el = $(dir.delay);
-      if (!el) return;
-
-      const sec = dep ? getDelaySeconds(dep) : 0;
-      const info = describeDelay(sec);
-
-      el.classList.remove("onTime","late","early");
-      el.classList.add(info.cls);
-      el.textContent = info.text;
-    }
-
-    function renderBig(dir, leaveSec){
-      const el = $(dir.big);
-      const card = $(dir.card);
-      if(!el) return;
-
-      if(leaveSec === null){
-        el.textContent = "-- min a -- sek";
-        if(card) card.classList.remove("go-now");
-        return;
-      }
-
-      if(leaveSec <= 0){
-        const over = -leaveSec;
-        if(over <= GO_NOW_MAX_SECONDS){
-          el.textContent = "VYJDI TEĎ";
-          if(card) card.classList.add("go-now");
-          return;
-        }
-      }
-
+    if(leaveSec === null){
+      el.textContent = "-- min a -- sek";
       if(card) card.classList.remove("go-now");
-
-      const s = Math.max(0, leaveSec);
-      const m = Math.floor(s/60);
-      const sec = s % 60;
-      el.textContent = `${m} min a ${pad2(sec)} sek`;
+      return;
     }
 
-    function renderList(elId, deps){
-      const el = $(elId);
-      if(!el) return;
-
-      const now = Date.now();
-
-      const future = deps
-        .map(d => ({ d, dt: getDepDate(d) }))
-        .filter(x => x.dt && x.dt.getTime() > now)
-        .sort((a,b) => a.dt - b.dt)
-        .map(x => x.d);
-
-      if(!future.length){
-        el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="time">—</span></div>`;
+    // ✅ VYJDI TEĎ jen max 15 s
+    if(leaveSec <= 0){
+      const over = -leaveSec;
+      if(over <= GO_NOW_MAX_SECONDS){
+        el.textContent = "VYJDI TEĎ";
+        if(card) card.classList.add("go-now");
         return;
       }
-
-      el.innerHTML = future.slice(0,3).map(d=>{
-        const dt = getDepDate(d);
-        const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
-        return `
-          <div class="plainRow">
-            <span>${d?.trip?.headsign || "—"}</span>
-            <span class="time">${mins} min</span>
-          </div>`;
-      }).join("");
     }
 
-    async function loadDepartures(){
-      try{
-        setPill(true, "Načítám data…");
+    if(card) card.classList.remove("go-now");
 
-        const res = await fetch(`/api/departures?name=${encodeURIComponent(STOP_NAME)}`, { cache:"no-store" });
-        const json = await res.json();
+    const s = Math.max(0, leaveSec);
+    const m = Math.floor(s/60);
+    const sec = s % 60;
+    el.textContent = `${m} min a ${pad2(sec)} sek`;
+  }
 
-        const departures = Array.isArray(json?.departures) ? json.departures : [];
+  function renderList(elId, deps){
+    const el = $(elId);
+    if(!el) return;
 
-        const metroC = departures.filter(d => d?.route?.short_name === "C");
+    const now = Date.now();
 
-        metroC.sort((a,b)=>{
-          const da = getDepDate(a)?.getTime() ?? 0;
-          const db = getDepDate(b)?.getTime() ?? 0;
-          return da - db;
-        });
+    const future = deps
+      .map(dep => ({ dep, dt: getDepDate(dep) }))
+      .filter(x => x.dt && x.dt.getTime() > now)
+      .sort((a,b) => a.dt - b.dt)
+      .map(x => x.dep);
 
-        depsLet = metroC.filter(d =>
-          (d?.trip?.headsign || "").includes("Letňany") || d?.stop?.platform_code === "1"
-        );
-
-        depsHaje = metroC.filter(d =>
-          (d?.trip?.headsign || "").includes("Háje") || d?.stop?.platform_code === "2"
-        );
-
-        setPill(true, "Live data OK");
-      }catch(e){
-        console.error(e);
-        setPill(false, "Chyba API");
-        depsLet = [];
-        depsHaje = [];
-      }
+    if(!future.length){
+      el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="time">—</span></div>`;
+      return;
     }
 
-    function realtimeUpdate(){
-      const nL = pickNextRelevant(depsLet);
-      const nH = pickNextRelevant(depsHaje);
+    el.innerHTML = future.slice(0,3).map(dep=>{
+      const dt = getDepDate(dep);
+      const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
+      return `
+        <div class="plainRow">
+          <span>${dep?.trip?.headsign || "—"}</span>
+          <span class="time">${mins} min</span>
+        </div>`;
+    }).join("");
+  }
 
-      renderTime(UI.let, nL.dt);
-      renderDelay(UI.let, nL.dep);
-      renderBig(UI.let, nL.leaveSec);
+  async function loadDepartures(){
+    try{
+      setPill(true);
 
-      renderTime(UI.haje, nH.dt);
-      renderDelay(UI.haje, nH.dep);
-      renderBig(UI.haje, nH.leaveSec);
+      const res = await fetch(`/api/departures?name=${encodeURIComponent(STOP_NAME)}`, { cache:"no-store" });
+      const json = await res.json();
 
-      renderList(UI.let.list, depsLet.slice(1));
-      renderList(UI.haje.list, depsHaje.slice(1));
+      const departures = Array.isArray(json?.departures) ? json.departures : [];
+
+      // jen Metro C
+      const metroC = departures.filter(d => d?.route?.short_name === "C");
+
+      // seřadit podle času (predicted/scheduled)
+      metroC.sort((a,b)=>{
+        const da = getDepDate(a)?.getTime() ?? 0;
+        const db = getDepDate(b)?.getTime() ?? 0;
+        return da - db;
+      });
+
+      depsLet = metroC.filter(d =>
+        (d?.trip?.headsign || "").includes("Letňany") || d?.stop?.platform_code === "1"
+      );
+
+      depsHaje = metroC.filter(d =>
+        (d?.trip?.headsign || "").includes("Háje") || d?.stop?.platform_code === "2"
+      );
+
+    }catch(e){
+      console.error(e);
+      setPill(false);
+      depsLet = [];
+      depsHaje = [];
     }
+  }
 
-    tickClock();
-    setInterval(tickClock, 1000);
+  function realtimeUpdate(){
+    const nL = pickNextRelevant(depsLet);
+    const nH = pickNextRelevant(depsHaje);
 
-    loadDepartures();
-    setInterval(loadDepartures, REFRESH_MS);
+    renderBadge(UI.let.badge,  nL.dt, nL.delaySec);
+    renderBadge(UI.haje.badge, nH.dt, nH.delaySec);
 
-    realtimeUpdate();
-    setInterval(realtimeUpdate, 1000);
-  </script>
+    renderBig(UI.let,  nL.leaveSec);
+    renderBig(UI.haje, nH.leaveSec);
+
+    // “pozdější časy” živě
+    renderList(UI.let.list,  depsLet.slice(1));
+    renderList(UI.haje.list, depsHaje.slice(1));
+  }
+
+  // START
+  setPill(true);
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  loadDepartures();
+  setInterval(loadDepartures, REFRESH_MS);
+
+  realtimeUpdate();
+  setInterval(realtimeUpdate, 1000);
+</script>
 </body>
 </html>
