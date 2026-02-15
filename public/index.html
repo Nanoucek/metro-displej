@@ -484,31 +484,53 @@
 
   // Badge = čas odjezdu + pod tím malý chip se stavem (na čas / zpoždění)
   function renderBadge(badgeId, date, delaySec){
-    const el = $(badgeId);
-    if(!el) return;
+  const el = $(badgeId);
+  if(!el) return;
 
-    const time = formatHHMM(date);
-    const delayText = formatDelayText(delaySec);
+  const time = formatHHMM(date);
+  const status = formatDelayText(delaySec);
 
-    // Bez barvy času (jen čistý text). Chip je odděleně.
-    el.innerHTML = `
-      <div style="font-weight:800; font-variant-numeric:tabular-nums;">${time}</div>
+  // jemné zvýraznění jen pokud je zpoždění (volitelné)
+  const isDelay = delaySec >= (ON_TIME_TOLERANCE_S + 1);
+
+  el.innerHTML = `
+    <div style="
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:6px;
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.86);
+      line-height:1.1;
+      min-width: 140px;
+      backdrop-filter: blur(10px);
+    ">
       <div style="
-        margin-top:6px;
-        display:inline-flex;
-        align-items:center;
-        padding:4px 10px;
-        border-radius:999px;
-        border:1px solid rgba(255,255,255,.14);
-        background: rgba(255,255,255,.06);
-        color: rgba(255,255,255,.78);
+        font-size:11px;
+        color: rgba(255,255,255,.62);
         font-weight:700;
+        letter-spacing:.2px;
+      ">Čas příjezdu</div>
+
+      <div style="
+        font-size:18px;
+        font-weight:900;
+        font-variant-numeric: tabular-nums;
+        letter-spacing:.3px;
+      ">${time}</div>
+
+      <div style="
         font-size:12px;
-        line-height:1.2;
-        white-space:nowrap;
-      ">${delayText}</div>
-    `;
-  }
+        font-weight:800;
+        color: rgba(255,255,255,.78);
+        ${isDelay ? "color: rgba(255,255,255,.92);" : ""}
+      ">${status}</div>
+    </div>
+  `;
+}
 
   function renderBig(dir, leaveSec){
     const el = $(dir.big);
