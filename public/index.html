@@ -360,6 +360,91 @@
 #metaRight{
   opacity:.9;
 }
+    /* ===== AUTO SCALE podle rozlišení (clamp) ===== */
+
+/* Titulek nahoře */
+.title h1{
+  font-size: clamp(34px, 3.6vw, 64px);
+  letter-spacing: clamp(-1.2px, -0.08vw, -0.6px);
+}
+
+.title .sub{
+  font-size: clamp(14px, 1.2vw, 20px);
+}
+
+/* Rámeček vpravo nahoře (AKTUÁLNÍ ČAS) */
+.pill{
+  padding: clamp(12px, 1.2vw, 20px) clamp(16px, 1.6vw, 26px);
+  gap: clamp(10px, 1vw, 16px);
+  font-size: clamp(14px, 1.1vw, 20px);
+}
+
+/* Čas vpravo nahoře */
+#clock{
+  font-size: clamp(16px, 1.4vw, 26px);
+  font-weight: 750;
+  letter-spacing: .4px;
+}
+
+/* Text “AKTUÁLNÍ ČAS” */
+#statusText{
+  font-size: clamp(14px, 1.0vw, 18px);
+  font-weight: 650;
+}
+
+/* Směr / názvy */
+.dir .label{
+  font-size: clamp(13px, 1.0vw, 18px);
+}
+.dir .name{
+  font-size: clamp(24px, 2.2vw, 40px);
+}
+
+/* “Vyjdi za” */
+.bigLabel{
+  font-size: clamp(13px, 1.0vw, 18px);
+}
+
+/* Obří odpočet */
+.big{
+  font-size: clamp(44px, 4.4vw, 86px);
+}
+
+/* “Čas příjezdu” + HH:MM v kartě */
+.arrivalLabel{
+  font-size: clamp(12px, 0.95vw, 16px);
+}
+.arrivalTime{
+  font-size: clamp(20px, 2.0vw, 34px);
+}
+
+/* Stavový chip (na čas / zpoždění) */
+.delayChip{
+  font-size: clamp(12px, 1.0vw, 16px);
+  padding: clamp(6px, 0.7vw, 10px) clamp(10px, 1.0vw, 14px);
+}
+
+/* Sekce “POZDĚJŠÍ…” */
+.sectionTitle{
+  font-size: clamp(13px, 1.0vw, 18px);
+}
+
+/* Řádky v seznamu */
+.plainRow{
+  font-size: clamp(13px, 1.05vw, 18px);
+}
+.plainRow .at{
+  min-width: clamp(56px, 4vw, 80px);
+}
+.plainRow .time{
+  min-width: clamp(56px, 4vw, 90px);
+}
+
+/* Spodní info: Zdroj / Stop */
+.footer{
+  font-size: clamp(14px, 1.2vw, 22px);
+  padding: clamp(6px, 0.8vw, 12px) clamp(6px, 0.8vw, 12px);
+}
   </style>
 </head>
 
