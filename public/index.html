@@ -559,41 +559,27 @@
     el.textContent = `${m} min a ${pad2(sec)} sek`;
   }
 
-  /* ✅ POZDĚJŠÍ ČASY: přidá HH:MM vlevo od “X min” */
+  /* ✅ POZDĚJŠÍ ČASY: HH:MM vlevo od “X min” + nezačínat prvním (aby se neduplikovalo) */
   function renderList(elId, deps){
-  const el = $(elId);
-  if(!el) return;
+    const el = $(elId);
+    if(!el) return;
 
-  const now = Date.now();
+    const now = Date.now();
 
-  const future = deps
-    .map(dep => ({ dep, dt: getDepDate(dep) }))
-    .filter(x => x.dt && x.dt.getTime() > now)
-    .sort((a,b) => a.dt - b.dt);
+    const future = deps
+      .map(dep => ({ dep, dt: getDepDate(dep) }))
+      .filter(x => x.dt && x.dt.getTime() > now)
+      .sort((a,b) => a.dt - b.dt);
 
-  // ✅ neukazovat první budoucí odjezd (ten je nahoře jako “aktuální”)
-  const later = future.slice(1);
+    // ✅ neukazovat první budoucí odjezd (ten je nahoře jako “aktuální”)
+    const later = future.slice(1);
 
-  if(!later.length){
-    el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="at">—</span><span class="time">—</span></div>`;
-    return;
-  }
+    if(!later.length){
+      el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="at">—</span><span class="time">—</span></div>`;
+      return;
+    }
 
-  el.innerHTML = later.slice(0,3).map(x=>{
-    const dt = x.dt;
-    const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
-    const hhmm = dt ? formatHHMM(dt) : "—";
-
-    return `
-      <div class="plainRow">
-        <span>${x.dep?.trip?.headsign || "—"}</span>
-        <span class="at">${hhmm}</span>
-        <span class="time">${mins} min</span>
-      </div>`;
-  }).join("");
-}
-
-    el.innerHTML = future.slice(0,3).map(x=>{
+    el.innerHTML = later.slice(0,3).map(x=>{
       const dt = x.dt;
       const mins = dt ? Math.max(0, Math.floor(diffSeconds(dt)/60)) : "—";
       const hhmm = dt ? formatHHMM(dt) : "—";
@@ -652,8 +638,9 @@
     renderBig(UI.let,  nL.leaveSec);
     renderBig(UI.haje, nH.leaveSec);
 
-    renderList(UI.let.list,  depsLet.slice(1));
-    renderList(UI.haje.list, depsHaje.slice(1));
+    // depsLet/depsHaje už jsou seřazené, renderList si sám odebere první budoucí
+    renderList(UI.let.list,  depsLet);
+    renderList(UI.haje.list, depsHaje);
   }
 
   setPill(true);
