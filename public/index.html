@@ -23,9 +23,12 @@
     }
 
     *{ box-sizing:border-box; }
+
+    /* disable scroll */
     html,body{
       height:100%;
       margin:0;
+      overflow:hidden;
       font-family:
         -apple-system,
         BlinkMacSystemFont,
@@ -41,29 +44,42 @@
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
     }
+
     body{
       background:
         radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.28), transparent 60%),
         radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,.22), transparent 55%),
         radial-gradient(900px 700px at 60% 90%, rgba(56,189,248,.18), transparent 60%),
         linear-gradient(140deg, var(--bg1), var(--bg2));
-      overflow:hidden;
+    }
+
+    /* kurzor zmizí jen ve fullscreen */
+    :fullscreen { cursor: none !important; }
+    :-webkit-full-screen { cursor: none !important; }
+
+    /* jemný přechod při přepnutí theme */
+    body, .card, .pill, .title h1{
+      transition: background .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease, filter .35s ease;
     }
 
     .wrap{
-      height:100%;
+      height:100vh;
+      width:100vw;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: clamp(16px, 2vw, 42px);
+      padding: clamp(24px, 3vw, 80px);
     }
 
     .board{
-  width: min(96vw, 1900px);   /* roztáhne se skoro přes celý monitor */
-  display:grid;
-  grid-template-columns: 1fr;
-  gap:18px;
-}
+      width:100%;
+      height:100%;
+      max-width:2200px;
+      max-height:1400px;
+      display:grid;
+      grid-template-rows:auto 1fr auto;
+      gap: clamp(16px, 2vh, 36px);
+    }
 
     .top{
       display:flex;
@@ -76,56 +92,76 @@
       display:flex;
       flex-direction:column;
       gap:10px;
+      min-width: 0;
     }
 
     .title h1{
       margin:0;
-      font-size:48px;
       font-weight:700;
-      letter-spacing:-0.9px;
       line-height:1.04;
-      color:rgba(255,255,255,.96);
       background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.78));
       -webkit-background-clip:text;
       -webkit-text-fill-color:transparent;
+
+      /* auto scale */
+      font-size: clamp(34px, 3.6vw, 64px);
+      letter-spacing: clamp(-1.2px, -0.08vw, -0.6px);
     }
 
     .title .sub{
       color:rgba(255,255,255,.58);
-      font-size:15px;
       font-weight:500;
       letter-spacing:.15px;
+      font-size: clamp(14px, 1.2vw, 20px);
     }
 
     .pill{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:14px 20px;
-  border-radius:999px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.12);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 14px 40px rgba(0,0,0,.35);
-  font-size:18px;
-  font-weight:600;
-  color:var(--muted);
-  white-space:nowrap;
-}
+      display:flex;
+      align-items:center;
+      gap: clamp(10px, 1vw, 16px);
+      border-radius:999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      font-weight:600;
+      color:var(--muted);
+      white-space:nowrap;
+
+      font-size: clamp(16px, 1.2vw, 26px);
+      padding: clamp(12px, 1vw, 22px) clamp(18px, 1.4vw, 32px);
+    }
 
     .dot{
-  width:12px;
-  height:12px;
-  border-radius:999px;
-  background: var(--good);
-  box-shadow: 0 0 0 8px rgba(52,211,153,.14);
-}
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      background: var(--good);
+      box-shadow: 0 0 0 8px rgba(52,211,153,.14);
+    }
+
+    #statusText{
+      font-size: clamp(14px, 1.0vw, 18px);
+      font-weight: 650;
+      letter-spacing: .3px;
+    }
+
+    #clock{
+      font-size: clamp(16px, 1.4vw, 26px);
+      font-weight: 750;
+      letter-spacing: .4px;
+      color: rgba(255,255,255,.95);
+      opacity: .85;
+      margin-left: 10px;
+    }
 
     .grid{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(520px, 1fr));
-  gap:18px;
-}
+      height:100%;
+      display:grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: clamp(18px, 2vw, 40px);
+      min-height:0;
+    }
 
     .card{
       position:relative;
@@ -136,7 +172,8 @@
       backdrop-filter: blur(22px);
       box-shadow: var(--shadow);
       overflow:hidden;
-      min-height: 250px;
+      height:100%;
+      min-height:0;
     }
 
     .card::before{
@@ -164,17 +201,18 @@
       display:flex;
       flex-direction:column;
       gap:6px;
+      min-width:0;
     }
 
     .dir .label{
       color: var(--muted);
-      font-size: 14px;
       letter-spacing:.2px;
+      font-size: clamp(13px, 1.0vw, 18px);
     }
 
     .dir .name{
-      font-size: 28px;
       font-weight: 800;
+      font-size: clamp(24px, 2.2vw, 40px);
     }
 
     .badgeStack{
@@ -185,25 +223,24 @@
     }
 
     .arrivalLabel{
-      font-size:12px;
       color:rgba(255,255,255,.55);
       font-weight:700;
       letter-spacing:.3px;
       line-height:1.1;
+      font-size: clamp(12px, 0.95vw, 16px);
     }
+
     .arrivalTime{
-      font-size:22px;
       font-weight:900;
       font-variant-numeric: tabular-nums;
       letter-spacing:.4px;
       color:rgba(255,255,255,.95);
       line-height:1.05;
+      font-size: clamp(20px, 2.0vw, 34px);
     }
 
     .delayChip{
-      padding:6px 10px;
       border-radius: 999px;
-      font-size: 12px;
       font-weight: 800;
       letter-spacing:.2px;
       border: 1px solid rgba(255,255,255,.12);
@@ -213,6 +250,9 @@
       line-height: 1.15;
       font-variant-numeric: tabular-nums;
       backdrop-filter: blur(10px);
+
+      font-size: clamp(12px, 1.0vw, 16px);
+      padding: clamp(6px, 0.7vw, 10px) clamp(10px, 1.0vw, 14px);
     }
 
     .delayChip.onTime{
@@ -230,12 +270,12 @@
       color: rgba(255,255,255,.75);
       font-weight: 700;
       margin-top: 8px;
-      font-size: 14px;
+      font-size: clamp(13px, 1.0vw, 18px);
     }
 
     .big{
       font-variant-numeric: tabular-nums;
-      font-size: 56px;
+      font-size: clamp(44px, 4.4vw, 86px);
       line-height: 1.05;
       font-weight: 900;
       letter-spacing:-1px;
@@ -261,7 +301,7 @@
       font-weight: 900;
       letter-spacing: .4px;
       color: rgba(255,255,255,.92);
-      font-size: 14px;
+      font-size: clamp(13px, 1.0vw, 18px);
     }
 
     .mini{
@@ -278,14 +318,14 @@
       gap:12px;
       padding:4px 0;
       color: rgba(255,255,255,.78);
-      font-size: 14px;
+      font-size: clamp(13px, 1.05vw, 18px);
     }
     .plainRow .at{
       color: rgba(255,255,255,.68);
       font-variant-numeric: tabular-nums;
       font-weight: 750;
       white-space:nowrap;
-      min-width: 52px;
+      min-width: clamp(56px, 4vw, 80px);
       text-align:right;
     }
     .plainRow .time{
@@ -293,7 +333,7 @@
       font-variant-numeric: tabular-nums;
       font-weight: 800;
       white-space:nowrap;
-      min-width: 54px;
+      min-width: clamp(56px, 4vw, 90px);
       text-align:right;
     }
 
@@ -301,17 +341,18 @@
       display:flex;
       justify-content:space-between;
       gap:12px;
-      color: var(--muted);
-      font-size: 13px;
-      padding: 0 4px;
+      color: rgba(255,255,255,.72);
+      font-weight:550;
+      letter-spacing:.3px;
+
+      font-size: clamp(16px, 1.1vw, 24px);
+      padding: clamp(6px, 0.8vw, 12px) clamp(6px, 0.8vw, 12px);
     }
+
+    #metaLeft, #metaRight{ opacity:.9; }
 
     @media (max-width: 900px){
       .grid{ grid-template-columns: 1fr; }
-      .big{ font-size: 46px; }
-      .dir .name{ font-size: 26px; }
-      .title h1{ font-size:36px; letter-spacing:-0.6px; }
-      .title .sub{ font-size:14px; }
     }
 
     .card.go-now{
@@ -335,116 +376,79 @@
           0 18px 60px rgba(0,0,0,.45);
       }
     }
-    #clock{
-  font-size:22px;
-  font-weight:700;
-  letter-spacing:.5px;
-  color:rgba(255,255,255,.95);
-}
-    #statusText{
-  font-size:17px;
-  font-weight:650;
-  letter-spacing:.3px;
-}
-    .footer{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  color: rgba(255,255,255,.72);
-  font-size:18px;
-  font-weight:550;
-  letter-spacing:.3px;
-  padding: 6px 6px;
-}
-    #metaLeft,
-#metaRight{
-  opacity:.9;
-}
-    /* ===== AUTO SCALE podle rozlišení (clamp) ===== */
 
-/* Titulek nahoře */
-.title h1{
-  font-size: clamp(34px, 3.6vw, 64px);
-  letter-spacing: clamp(-1.2px, -0.08vw, -0.6px);
-}
+    /* =========================
+       LIGHT MODE (08:00–20:00)
+       ========================= */
+    body.light{
+      --bg1:#f6f7fb;
+      --bg2:#eef1f7;
 
-.title .sub{
-  font-size: clamp(14px, 1.2vw, 20px);
-}
+      --glass: rgba(0,0,0,.06);
+      --glass2: rgba(0,0,0,.04);
+      --stroke: rgba(0,0,0,.10);
 
-/* Rámeček vpravo nahoře (AKTUÁLNÍ ČAS) */
-.pill{
-  padding: clamp(12px, 1.2vw, 20px) clamp(16px, 1.6vw, 26px);
-  gap: clamp(10px, 1vw, 16px);
-  font-size: clamp(14px, 1.1vw, 20px);
-}
+      --text: rgba(10,12,18,.92);
+      --muted: rgba(10,12,18,.60);
 
-/* Čas vpravo nahoře */
-#clock{
-  font-size: clamp(16px, 1.4vw, 26px);
-  font-weight: 750;
-  letter-spacing: .4px;
-}
+      --shadow: 0 18px 60px rgba(0,0,0,.12);
 
-/* Text “AKTUÁLNÍ ČAS” */
-#statusText{
-  font-size: clamp(14px, 1.0vw, 18px);
-  font-weight: 650;
-}
+      background:
+        radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.10), transparent 60%),
+        radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,.08), transparent 55%),
+        radial-gradient(900px 700px at 60% 90%, rgba(56,189,248,.08), transparent 60%),
+        linear-gradient(140deg, var(--bg1), var(--bg2));
+    }
 
-/* Směr / názvy */
-.dir .label{
-  font-size: clamp(13px, 1.0vw, 18px);
-}
-.dir .name{
-  font-size: clamp(24px, 2.2vw, 40px);
-}
+    body.light .title .sub{ color: rgba(10,12,18,.58); }
 
-/* “Vyjdi za” */
-.bigLabel{
-  font-size: clamp(13px, 1.0vw, 18px);
-}
+    body.light .title h1{
+      background: linear-gradient(180deg, rgba(10,12,18,.98), rgba(10,12,18,.72));
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
 
-/* Obří odpočet */
-.big{
-  font-size: clamp(44px, 4.4vw, 86px);
-}
+    body.light .pill{
+      background: rgba(255,255,255,.70);
+      border: 1px solid rgba(0,0,0,.10);
+      color: var(--muted);
+      box-shadow: 0 14px 40px rgba(0,0,0,.14);
+    }
 
-/* “Čas příjezdu” + HH:MM v kartě */
-.arrivalLabel{
-  font-size: clamp(12px, 0.95vw, 16px);
-}
-.arrivalTime{
-  font-size: clamp(20px, 2.0vw, 34px);
-}
+    body.light #clock{ color: rgba(10,12,18,.86); }
+    body.light .arrivalLabel{ color: rgba(10,12,18,.55); }
+    body.light .arrivalTime{ color: rgba(10,12,18,.92); }
+    body.light .sectionTitle{ color: rgba(10,12,18,.88); }
+    body.light .plainRow{ color: rgba(10,12,18,.72); }
+    body.light .plainRow .at{ color: rgba(10,12,18,.60); }
+    body.light .plainRow .time{ color: rgba(10,12,18,.88); }
+    body.light .bigLabel{ color: rgba(10,12,18,.70); }
+    body.light .big{ color: rgba(10,12,18,.94); }
+    body.light .footer{ color: rgba(10,12,18,.62); }
 
-/* Stavový chip (na čas / zpoždění) */
-.delayChip{
-  font-size: clamp(12px, 1.0vw, 16px);
-  padding: clamp(6px, 0.7vw, 10px) clamp(10px, 1.0vw, 14px);
-}
+    body.light .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,255,255,.62));
+      border: 1px solid rgba(0,0,0,.10);
+      box-shadow: var(--shadow);
+    }
+    body.light .card::before{ opacity:.55; }
 
-/* Sekce “POZDĚJŠÍ…” */
-.sectionTitle{
-  font-size: clamp(13px, 1.0vw, 18px);
-}
+    body.light .delayChip{
+      border: 1px solid rgba(0,0,0,.10);
+      background: rgba(10,12,18,.05);
+      color: rgba(10,12,18,.78);
+    }
 
-/* Řádky v seznamu */
-.plainRow{
-  font-size: clamp(13px, 1.05vw, 18px);
-}
-.plainRow .at{
-  min-width: clamp(56px, 4vw, 80px);
-}
-.plainRow .time{
-  min-width: clamp(56px, 4vw, 90px);
-}
-
-/* Spodní info: Zdroj / Stop */
-.footer{
-  font-size: clamp(14px, 1.2vw, 22px);
-  padding: clamp(6px, 0.8vw, 12px) clamp(6px, 0.8vw, 12px);
-}
+    body.light .delayChip.onTime{
+      border-color: rgba(52,211,153,.30);
+      background: rgba(52,211,153,.12);
+      color: rgba(11,94,66,.92);
+    }
+    body.light .delayChip.late{
+      border-color: rgba(248,113,113,.28);
+      background: rgba(248,113,113,.14);
+      color: rgba(127,29,29,.92);
+    }
   </style>
 </head>
 
@@ -460,7 +464,7 @@
         <div class="pill" id="statusPill">
           <span class="dot" id="statusDot"></span>
           <span id="statusText">Načítám data…</span>
-          <span style="margin-left:10px; opacity:.7;" id="clock">--:--:--</span>
+          <span id="clock">--:--:--</span>
         </div>
       </div>
 
@@ -613,14 +617,6 @@
       el.classList.add(isDelay ? "late" : "onTime");
     }
 
-    /**
-     * Vybere “nejbližší aktuální” spoj pro:
-     * - Čas příjezdu (vpravo nahoře)
-     * - Vyjdi za (odvíjí se od něj)
-     *
-     * Pozor: může přeskočit dřívější odjezd, pokud bys už měl vyjít
-     * a “VYJDI TEĎ” by trvalo déle než 15 s.
-     */
     function pickNextRelevant(deps){
       const now = Date.now();
       for (let i = 0; i < deps.length; i++){
@@ -678,14 +674,6 @@
       el.textContent = `${m} min a ${pad2(sec)} sek`;
     }
 
-    /**
-     * POZDĚJŠÍ ČASY:
-     * - vezme budoucí spoje pro daný směr
-     * - najde přesně ten “aktuální” (ten nahoře)
-     * - a zobrazí až 3 následující: 2., 3., 4.
-     *
-     * Tím se neduplikují časy a zároveň se nikdy neukáže “přeskočený” odjezd.
-     */
     function renderList(elId, depsAll, selectedDep){
       const el = $(elId);
       if(!el) return;
@@ -702,7 +690,6 @@
         return;
       }
 
-      // index aktuálního (toho, co je v "Čas příjezdu")
       let idx = -1;
       if (selectedDep){
         const selDt = getDepDate(selectedDep);
@@ -712,8 +699,7 @@
         }
       }
 
-      // chceme 2., 3., 4. (tj. po aktuálním)
-      const start = (idx >= 0) ? idx + 1 : 1; // když nenajdeme, aspoň neukazovat úplně první
+      const start = (idx >= 0) ? idx + 1 : 1; // pokud nenajde, neskákej na úplně první
       const later = future.slice(start, start + 3);
 
       if(!later.length){
@@ -743,7 +729,6 @@
         const departures = Array.isArray(json?.departures) ? json.departures : [];
         const metroC = departures.filter(d => d?.route?.short_name === "C");
 
-        // seřadit dle predicted/scheduled
         metroC.sort((a,b)=>{
           const da = getDepDate(a)?.getTime() ?? 0;
           const db = getDepDate(b)?.getTime() ?? 0;
@@ -770,22 +755,44 @@
       const nL = pickNextRelevant(depsLet);
       const nH = pickNextRelevant(depsHaje);
 
-      // Čas příjezdu = nejbližší aktuální (vybraný) čas
       renderTime(UI.let.badge,  nL.dt);
       renderTime(UI.haje.badge, nH.dt);
 
-      // Stav (na čas / zpoždění)
       renderStatusChip(UI.let.chip,  nL.delaySec);
       renderStatusChip(UI.haje.chip, nH.delaySec);
 
-      // Vyjdi za = odvíjí se od toho stejného “aktuálního” času
       renderBig(UI.let,  nL.leaveSec);
       renderBig(UI.haje, nH.leaveSec);
 
-      // Pozdější časy = 2., 3., 4. po aktuálním
       renderList(UI.let.list,  depsLet,  nL.dep);
       renderList(UI.haje.list, depsHaje, nH.dep);
     }
+
+    /* ===== Fullscreen: schovej kurzor ===== */
+    function applyCursorMode(){
+      const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+      document.body.style.cursor = isFs ? "none" : "";
+    }
+    document.addEventListener("fullscreenchange", applyCursorMode);
+    document.addEventListener("webkitfullscreenchange", applyCursorMode);
+    applyCursorMode();
+
+    /* ===== Auto theme: 08:00–20:00 light, jinak dark ===== */
+    function applyThemeByTime(){
+      const d = new Date();
+      const h = d.getHours();
+      const m = d.getMinutes();
+
+      // light: 08:00–20:00 (včetně 20:00), od 20:01 už dark
+      const isLight =
+        (h > 8 && h < 20) ||
+        (h === 8 && m >= 0) ||
+        (h === 20 && m === 0);
+
+      document.body.classList.toggle("light", isLight);
+    }
+    applyThemeByTime();
+    setInterval(applyThemeByTime, 30 * 1000);
 
     // START
     setPill(true);
