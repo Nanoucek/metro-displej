@@ -155,7 +155,7 @@
       font-weight: 800;
     }
 
-    /* Badge: jen jednotný čas (bez barev) */
+    /* Badge stack: čas + 1 jediný stavový čip */
     .badgeStack{
       display:flex;
       flex-direction:column;
@@ -163,28 +163,29 @@
       gap:8px;
     }
 
-    .badge{
-      padding:7px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 750;
-      letter-spacing:.2px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.82);
-      white-space:nowrap;
-      text-align:right;
-      line-height: 1.2;
-      min-width: 64px;
+    /* Čas: bez “bubliny” (žádný rámeček/pozadí) */
+    .arrivalLabel{
+      font-size:12px;
+      color:rgba(255,255,255,.55);
+      font-weight:700;
+      letter-spacing:.3px;
+      line-height:1.1;
+    }
+    .arrivalTime{
+      font-size:22px;
+      font-weight:900;
       font-variant-numeric: tabular-nums;
+      letter-spacing:.4px;
+      color:rgba(255,255,255,.95);
+      line-height:1.05;
     }
 
-    /* Malý kulatý čip pro zpoždění */
+    /* Jediná bublina = stav */
     .delayChip{
       padding:6px 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: 750;
+      font-weight: 800;
       letter-spacing:.2px;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.05);
@@ -192,6 +193,7 @@
       white-space:nowrap;
       line-height: 1.15;
       font-variant-numeric: tabular-nums;
+      backdrop-filter: blur(10px);
     }
 
     .delayChip.onTime{
@@ -200,14 +202,9 @@
       color: rgba(167,243,208,.95);
     }
     .delayChip.late{
-      border-color: rgba(251,191,36,.32);
-      background: rgba(251,191,36,.10);
-      color: rgba(253,230,138,.95);
-    }
-    .delayChip.early{
-      border-color: rgba(56,189,248,.32);
-      background: rgba(56,189,248,.10);
-      color: rgba(186,230,253,.95);
+      border-color: rgba(248,113,113,.32);
+      background: rgba(248,113,113,.10);
+      color: rgba(254,202,202,.95);
     }
 
     .bigLabel{
@@ -321,7 +318,8 @@
             </div>
 
             <div class="badgeStack">
-              <div class="badge" id="bLet">--:--</div>
+              <div class="arrivalLabel">Čas příjezdu</div>
+              <div class="arrivalTime" id="bLet">--:--</div>
               <div class="delayChip onTime" id="dLet">na čas</div>
             </div>
           </div>
@@ -344,7 +342,8 @@
             </div>
 
             <div class="badgeStack">
-              <div class="badge" id="bHaje">--:--</div>
+              <div class="arrivalLabel">Čas příjezdu</div>
+              <div class="arrivalTime" id="bHaje">--:--</div>
               <div class="delayChip onTime" id="dHaje">na čas</div>
             </div>
           </div>
@@ -374,8 +373,8 @@
   const ON_TIME_TOLERANCE_S = 15;     // “na čas” do ±15 s, “zpoždění” až od +16 s
 
   const UI = {
-    let:  { badge:"bLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
-    haje: { badge:"bHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
+    let:  { badge:"bLet",  chip:"dLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
+    haje: { badge:"bHaje", chip:"dHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
     statusText:"statusText",
     statusDot:"statusDot",
     clock:"clock"
@@ -443,9 +442,9 @@
   }
 
   function formatDelayText(delaySec){
-    // ✅ “dřív” nikdy neukazovat
-    // ✅ “na čas” do ±15 s (tj. i když je záporný delay)
-    // ✅ “zpoždění” až od +16 s
+    // “dřív” nikdy nepsat
+    // “na čas” do ±15 s
+    // “zpoždění” až od +16 s
     if (delaySec >= (ON_TIME_TOLERANCE_S + 1)) {
       const s = delaySec;
       const m = Math.floor(s / 60);
@@ -456,9 +455,18 @@
     return "na čas";
   }
 
+  function renderStatusChip(chipId, delaySec){
+    const el = $(chipId);
+    if(!el) return;
+
+    const isDelay = delaySec >= (ON_TIME_TOLERANCE_S + 1);
+
+    el.textContent = formatDelayText(delaySec);
+    el.classList.remove("onTime","late");
+    el.classList.add(isDelay ? "late" : "onTime");
+  }
+
   // vybere nejbližší “relevantní” spoj
-  // - pokud jsme v “VYJDI TEĎ” déle než 15 s -> spoj přeskočí
-  // - jinak vezme první budoucí odjezd
   function pickNextRelevant(deps){
     const now = Date.now();
 
@@ -469,10 +477,7 @@
       const depSec = Math.round((dt.getTime() - now) / 1000);
       const leaveSec = depSec - WALK_SECONDS;
 
-      // odjezd už je pryč -> přeskočit
       if (depSec <= 0) continue;
-
-      // jsme “po čase odchodu” více než 15 s -> přeskočit
       if (leaveSec <= -GO_NOW_MAX_SECONDS) continue;
 
       const delaySec = getDelaySeconds(dep);
@@ -482,70 +487,12 @@
     return { dep:null, dt:null, leaveSec:null, delaySec:0 };
   }
 
-  // Badge = čas odjezdu + pod tím malý chip se stavem (na čas / zpoždění)
-  function renderBadge(badgeId, date, delaySec){
-  const el = $(badgeId);
-  if(!el) return;
+  function renderTime(badgeId, date){
+    const el = $(badgeId);
+    if(!el) return;
+    el.textContent = formatHHMM(date);
+  }
 
-  const time = formatHHMM(date);
-  const status = formatDelayText(delaySec);
-
-  const isDelay = delaySec >= (ON_TIME_TOLERANCE_S + 1);
-
-  el.innerHTML = `
-    <div style="
-      display:flex;
-      flex-direction:column;
-      align-items:flex-end;
-      gap:6px;
-      line-height:1.1;
-    ">
-
-      <!-- ČAS (už bez bubliny) -->
-      <div style="
-        font-size:12px;
-        color:rgba(255,255,255,.55);
-        font-weight:700;
-        letter-spacing:.3px;
-      ">
-        Čas příjezdu
-      </div>
-
-      <div style="
-        font-size:22px;
-        font-weight:900;
-        font-variant-numeric: tabular-nums;
-        letter-spacing:.4px;
-        color:rgba(255,255,255,.95);
-      ">
-        ${time}
-      </div>
-
-      <!-- JEDINÁ BUBLINA = STAV -->
-      <div style="
-        padding:4px 10px;
-        border-radius:999px;
-        font-size:12px;
-        font-weight:800;
-        border:1px solid rgba(255,255,255,.16);
-        background:${
-          isDelay
-            ? "rgba(248,113,113,.18)"
-            : "rgba(52,211,153,.18)"
-        };
-        color:${
-          isDelay
-            ? "rgba(248,113,113,.95)"
-            : "rgba(52,211,153,.95)"
-        };
-        backdrop-filter: blur(10px);
-      ">
-        ${status}
-      </div>
-
-    </div>
-  `;
-}
   function renderBig(dir, leaveSec){
     const el = $(dir.big);
     const card = $(dir.card);
@@ -557,7 +504,6 @@
       return;
     }
 
-    // ✅ VYJDI TEĎ jen max 15 s
     if(leaveSec <= 0){
       const over = -leaveSec;
       if(over <= GO_NOW_MAX_SECONDS){
@@ -642,13 +588,15 @@
     const nL = pickNextRelevant(depsLet);
     const nH = pickNextRelevant(depsHaje);
 
-    renderBadge(UI.let.badge,  nL.dt, nL.delaySec);
-    renderBadge(UI.haje.badge, nH.dt, nH.delaySec);
+    renderTime(UI.let.badge,  nL.dt);
+    renderTime(UI.haje.badge, nH.dt);
+
+    renderStatusChip(UI.let.chip,  nL.delaySec);
+    renderStatusChip(UI.haje.chip, nH.delaySec);
 
     renderBig(UI.let,  nL.leaveSec);
     renderBig(UI.haje, nH.leaveSec);
 
-    // “pozdější časy” živě
     renderList(UI.let.list,  depsLet.slice(1));
     renderList(UI.haje.list, depsHaje.slice(1));
   }
@@ -663,6 +611,6 @@
 
   realtimeUpdate();
   setInterval(realtimeUpdate, 1000);
-</script>
+  </script>
 </body>
 </html>
