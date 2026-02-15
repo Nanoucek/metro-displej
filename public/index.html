@@ -166,8 +166,33 @@
       color: rgba(255,255,255,.76);
       white-space:nowrap;
       text-align:right;
-      line-height: 1.35;
-      min-width: 56px;
+      line-height: 1.2;
+      min-width: 62px;
+    }
+
+    /* druhý řádek v badge (zpoždění) */
+    .badge small{
+      display:block;
+      margin-top:2px;
+      font-size:11px;
+      opacity:.9;
+    }
+
+    /* barvy badge podle zpoždění */
+    .badge.good{
+      border-color: rgba(52,211,153,.35);
+      background: rgba(52,211,153,.10);
+      color: rgba(167,243,208,.95);
+    }
+    .badge.warn{
+      border-color: rgba(251,191,36,.35);
+      background: rgba(251,191,36,.10);
+      color: rgba(253,230,138,.95);
+    }
+    .badge.bad{
+      border-color: rgba(248,113,113,.35);
+      background: rgba(248,113,113,.10);
+      color: rgba(254,202,202,.95);
     }
 
     .bigLabel{
@@ -380,6 +405,26 @@
       return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
     }
 
+    /* ====== ZPOŽDĚNÍ ====== */
+    function getDelaySeconds(dep){
+      const sec = dep?.delay?.seconds;
+      if (Number.isFinite(sec)) return sec;
+
+      const pred = parseIso(dep?.departure_timestamp?.predicted);
+      const sch  = parseIso(dep?.departure_timestamp?.scheduled);
+      if (pred && sch) return Math.round((pred - sch) / 1000);
+
+      return 0;
+    }
+
+    function formatDelay(sec){
+      if (!Number.isFinite(sec) || sec === 0) return "";
+      const sign = sec > 0 ? "+" : "-";
+      const abs = Math.abs(sec);
+      if (abs >= 60) return `${sign}${Math.round(abs/60)} min`;
+      return `${sign}${abs} s`;
+    }
+
     // vybere nejbližší “relevantní” spoj
     // - pokud jsme v “VYJDI TEĎ” déle než 15 s -> spoj přeskočí
     // - jinak vezme první budoucí odjezd
@@ -405,10 +450,19 @@
       return { dep:null, dt:null, leaveSec:null };
     }
 
-    function renderBadge(elId, date){
+    function renderBadge(elId, date, dep){
       const el = $(elId);
       if(!el) return;
-      el.textContent = formatHHMM(date);
+
+      const delaySec = dep ? getDelaySeconds(dep) : 0;
+      const delayTxt = formatDelay(delaySec);
+
+      el.classList.remove("good","warn","bad");
+      if (delaySec >= 90) el.classList.add("bad");
+      else if (delaySec >= 30) el.classList.add("warn");
+      else el.classList.add("good");
+
+      el.innerHTML = `${formatHHMM(date)}${delayTxt ? `<small>${delayTxt}</small>` : ""}`;
     }
 
     function renderBig(dir, leaveSec){
@@ -508,8 +562,8 @@
       const nL = pickNextRelevant(depsLet);
       const nH = pickNextRelevant(depsHaje);
 
-      renderBadge(UI.let.badge, nL.dt);
-      renderBadge(UI.haje.badge, nH.dt);
+      renderBadge(UI.let.badge, nL.dt, nL.dep);
+      renderBadge(UI.haje.badge, nH.dt, nH.dep);
 
       renderBig(UI.let, nL.leaveSec);
       renderBig(UI.haje, nH.leaveSec);
