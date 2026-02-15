@@ -265,7 +265,7 @@
       margin-top:10px;
     }
 
-    /* ✅ řádek s HH:MM + X min */
+    /* řádek s HH:MM + X min */
     .plainRow{
       display:grid;
       grid-template-columns: 1fr auto auto;
@@ -559,20 +559,23 @@
     el.textContent = `${m} min a ${pad2(sec)} sek`;
   }
 
-  /* ✅ POZDĚJŠÍ ČASY: HH:MM vlevo od “X min” + nezačínat prvním (aby se neduplikovalo) */
-  function renderList(elId, deps){
+  /* ✅ POZDĚJŠÍ ČASY: nezačínat “aktuálním” časem, ale až dalším
+     (odfiltruje přesně ten čas, který je nahoře jako nX.dt) */
+  function renderList(elId, deps, excludeDate){
     const el = $(elId);
     if(!el) return;
 
     const now = Date.now();
+    const excludeTs = excludeDate ? excludeDate.getTime() : null;
 
     const future = deps
       .map(dep => ({ dep, dt: getDepDate(dep) }))
       .filter(x => x.dt && x.dt.getTime() > now)
       .sort((a,b) => a.dt - b.dt);
 
-    // ✅ neukazovat první budoucí odjezd (ten je nahoře jako “aktuální”)
-    const later = future.slice(1);
+    const later = excludeTs
+      ? future.filter(x => x.dt.getTime() !== excludeTs)
+      : future;
 
     if(!later.length){
       el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="at">—</span><span class="time">—</span></div>`;
@@ -638,9 +641,9 @@
     renderBig(UI.let,  nL.leaveSec);
     renderBig(UI.haje, nH.leaveSec);
 
-    // depsLet/depsHaje už jsou seřazené, renderList si sám odebere první budoucí
-    renderList(UI.let.list,  depsLet);
-    renderList(UI.haje.list, depsHaje);
+    // ✅ seznam odfiltruje ten čas, který už je nahoře
+    renderList(UI.let.list,  depsLet,  nL.dt);
+    renderList(UI.haje.list, depsHaje, nH.dt);
   }
 
   setPill(true);
