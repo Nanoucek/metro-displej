@@ -7,551 +7,476 @@
   <title>Metro displej</title>
 
   <style>
+    /* =========================
+       FONTS (z /public/fonts)
+       ========================= */
+    @font-face{
+      font-family: "GalanoGrotesque";
+      src: url("/fonts/GalanoGrotesque-Bold.otf") format("opentype");
+      font-weight: 800;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face{
+      font-family: "GalanoGrotesque";
+      src: url("/fonts/GalanoGrotesque-SemiBoldItalic.otf") format("opentype");
+      font-weight: 650;
+      font-style: italic;
+      font-display: swap;
+    }
+
     :root{
-      --bg1:#0b0f1c;
-      --bg2:#0a1228;
-      --glass: rgba(255,255,255,.08);
-      --glass2: rgba(255,255,255,.06);
-      --stroke: rgba(255,255,255,.14);
-      --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.62);
-      --good: rgba(52, 211, 153, .95);
-      --warn: rgba(251, 191, 36, .95);
-      --bad: rgba(248, 113, 113, .95);
-      --shadow: 0 18px 60px rgba(0,0,0,.45);
-      --radius: 28px;
+      /* ====== BARVY (přesně dle zadání) ====== */
+      --yellow: #fdc40a;     /* background + žluté texty */
+      --lyellow:#feeabf;     /* světle žluté texty v seznamu + contact */
+      --board:  #231f20;     /* tabule */
+      --white:  #ffffff;
+
+      --dg: #33a86f;         /* Dark Green (chip border na čas + flash green) */
+      --g:  #c5e1cf;         /* Green (chip shadow na čas) */
+
+      --dr: #f36f42;         /* Dark Red (chip border zpoždění + flash red + top bar border) */
+      --r:  #fcd0b9;         /* Red (chip shadow zpoždění) */
+
+      --db: #5a73b8;         /* Dark Blue (aktuální čas rámeček + flash blue) */
+
+      /* layout */
+      --maxw: 1700px;
+      --pad: clamp(18px, 2.6vw, 56px);
     }
 
     *{ box-sizing:border-box; }
 
-    /* disable scroll */
     html,body{
       height:100%;
       margin:0;
       overflow:hidden;
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "SF Pro Display",
-        "SF Pro Text",
-        "Segoe UI",
-        Roboto,
-        Helvetica,
-        Arial,
-        sans-serif;
-      color:var(--text);
+      font-family: "GalanoGrotesque", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--yellow);
+      color: var(--white);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: optimizeLegibility;
     }
 
-    body{
-      background:
-        radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.28), transparent 60%),
-        radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,.22), transparent 55%),
-        radial-gradient(900px 700px at 60% 90%, rgba(56,189,248,.18), transparent 60%),
-        linear-gradient(140deg, var(--bg1), var(--bg2));
-    }
-
-    /* kurzor zmizí jen ve fullscreen */
     :fullscreen { cursor: none !important; }
     :-webkit-full-screen { cursor: none !important; }
 
-    /* jemný přechod při přepnutí theme */
-    body, .card, .pill, .title h1{
-      transition: background .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease, filter .35s ease;
-    }
-
     .wrap{
-      height:100vh;
       width:100vw;
+      height:100vh;
       display:flex;
       align-items:center;
       justify-content:center;
-      padding: clamp(24px, 3vw, 80px);
+      padding: var(--pad);
+      position: relative;
     }
+
+    /* rohové VŠKK */
+    .corner{
+      position:absolute;
+      font-weight:800;
+      font-size: clamp(40px, 5vw, 92px);
+      letter-spacing: .5px;
+      color: var(--white);
+      opacity: .98;
+      user-select:none;
+      pointer-events:none;
+      line-height: 1;
+    }
+    .corner.tl{ left: var(--pad); top: calc(var(--pad) * .6); }
+    .corner.tr{ right: var(--pad); top: calc(var(--pad) * .6); }
+    .corner.bl{ left: var(--pad); bottom: calc(var(--pad) * .9); transform: scaleX(-1); }
+    .corner.br{ right: var(--pad); bottom: calc(var(--pad) * .9); transform: scaleX(-1); }
 
     .board{
-      width:100%;
-      height:100%;
-      max-width:2200px;
-      max-height:1400px;
+      width: min(var(--maxw), 100%);
+      height: 100%;
+      max-height: 980px;
       display:grid;
-      grid-template-rows:auto 1fr auto;
-      gap: clamp(16px, 2vh, 36px);
+      grid-template-rows: auto 1fr auto;
+      gap: clamp(18px, 2.4vh, 36px);
     }
 
+    /* TOP BAR */
     .top{
       display:flex;
+      justify-content:center;
       align-items:center;
-      justify-content:space-between;
-      gap:16px;
+      padding-top: clamp(6px, 1vh, 12px);
     }
 
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-width: 0;
+    .topBarInner{
+      background: var(--dr);
+      color: var(--white);
+      font-weight:800;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      font-size: clamp(22px, 2.3vw, 44px);
+      padding: clamp(14px, 1.5vw, 22px) clamp(18px, 2vw, 34px);
+      width: min(1180px, 100%);
+      text-align:center;
+
+      /* “bílý offset” */
+      box-shadow: 10px 10px 0 var(--white);
+      border: 6px solid var(--dr);
     }
 
-    .title h1{
-      margin:0;
-      font-weight:700;
-      line-height:1.04;
-      background: linear-gradient(180deg, rgba(255,255,255,1), rgba(255,255,255,.78));
-      -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-
-      /* auto scale */
-      font-size: clamp(34px, 3.6vw, 64px);
-      letter-spacing: clamp(-1.2px, -0.08vw, -0.6px);
-    }
-
-    .title .sub{
-      color:rgba(255,255,255,.58);
-      font-weight:500;
-      letter-spacing:.15px;
-      font-size: clamp(14px, 1.2vw, 20px);
-    }
-
-    .pill{
-      display:flex;
-      align-items:center;
-      gap: clamp(10px, 1vw, 16px);
-      border-radius:999px;
-      background: rgba(255,255,255,.07);
-      border: 1px solid rgba(255,255,255,.12);
-      backdrop-filter: blur(20px);
-      box-shadow: 0 14px 40px rgba(0,0,0,.35);
-      font-weight:600;
-      color:var(--muted);
-      white-space:nowrap;
-
-      font-size: clamp(16px, 1.2vw, 26px);
-      padding: clamp(12px, 1vw, 22px) clamp(18px, 1.4vw, 32px);
-    }
-
-    .dot{
-      width:12px;
-      height:12px;
-      border-radius:999px;
-      background: var(--good);
-      box-shadow: 0 0 0 8px rgba(52,211,153,.14);
-    }
-
-    #statusText{
-      font-size: clamp(14px, 1.0vw, 18px);
-      font-weight: 650;
-      letter-spacing: .3px;
-    }
-
-    #clock{
-      font-size: clamp(16px, 1.4vw, 26px);
-      font-weight: 750;
-      letter-spacing: .4px;
-      color: rgba(255,255,255,.95);
-      opacity: .85;
-      margin-left: 10px;
-    }
-
+    /* GRID */
     .grid{
-      height:100%;
       display:grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: clamp(18px, 2vw, 40px);
+      gap: clamp(18px, 2vw, 34px);
       min-height:0;
     }
 
-    .card{
+    /* bílý offset pod tabulí */
+    .sheet{
       position:relative;
-      padding:22px;
-      border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-      border: 1px solid rgba(255,255,255,.14);
-      backdrop-filter: blur(22px);
-      box-shadow: var(--shadow);
-      overflow:hidden;
       height:100%;
       min-height:0;
     }
-
-    .card::before{
+    .sheet::after{
       content:"";
       position:absolute;
-      inset:-1px;
-      background:
-        radial-gradient(300px 200px at 20% 20%, rgba(255,255,255,.14), transparent 65%),
-        radial-gradient(260px 220px at 80% 10%, rgba(56,189,248,.18), transparent 60%),
-        radial-gradient(300px 260px at 70% 90%, rgba(79,70,229,.16), transparent 62%);
-      pointer-events:none;
+      left: 14px;
+      top: 14px;
+      right: -14px;
+      bottom: -14px;
+      background: var(--white);
+      z-index: 0;
     }
 
-    .card > *{ position:relative; }
+    /* CARD = tabule */
+    .card{
+      position:relative;
+      z-index: 1;
+      background: var(--board);
+      padding: clamp(22px, 2.4vw, 40px);
+      height:100%;
+      min-height:0;
+      display:grid;
+      grid-template-rows: auto auto 1fr;
+      gap: clamp(14px, 1.8vh, 20px);
+      transition: background .12s linear, border-color .12s linear, box-shadow .12s linear;
+    }
 
+    /* HEADER */
     .head{
       display:flex;
       align-items:flex-start;
       justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
+      gap: 18px;
     }
 
-    .dir{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      min-width:0;
-    }
-
+    .dir{ min-width:0; }
     .dir .label{
-      color: var(--muted);
-      letter-spacing:.2px;
-      font-size: clamp(13px, 1.0vw, 18px);
+      color: var(--yellow);
+      font-weight:800;
+      text-transform: lowercase;
+      font-size: clamp(20px, 2vw, 34px);
+      letter-spacing: .2px;
     }
-
     .dir .name{
-      font-weight: 800;
-      font-size: clamp(24px, 2.2vw, 40px);
+      color: var(--white);
+      font-weight:800;
+      letter-spacing: -0.6px;
+      font-size: clamp(48px, 4.6vw, 86px);
+      line-height: 1.02;
+      margin-top: clamp(4px, .5vh, 8px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
     .badgeStack{
       display:flex;
       flex-direction:column;
       align-items:flex-end;
-      gap:8px;
+      gap: clamp(10px, 1vh, 14px);
+      white-space:nowrap;
     }
 
     .arrivalLabel{
-      color:rgba(255,255,255,.55);
-      font-weight:700;
-      letter-spacing:.3px;
-      line-height:1.1;
-      font-size: clamp(12px, 0.95vw, 16px);
+      color: var(--yellow);
+      font-weight:800;
+      text-transform: lowercase;
+      font-size: clamp(18px, 1.6vw, 28px);
     }
-
     .arrivalTime{
-      font-weight:900;
+      color: var(--white);
+      font-weight:800;
       font-variant-numeric: tabular-nums;
-      letter-spacing:.5px;
-      color:rgba(255,255,255,.95);
-      line-height:1.05;
-      font-size: clamp(24px, 2.4vw, 42px);
+      font-size: clamp(42px, 3.8vw, 72px);
+      line-height: 1;
+      letter-spacing: .5px;
     }
 
+    /* CHIP */
     .delayChip{
-      border-radius: 999px;
-      font-weight: 800;
-      letter-spacing:.2px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.05);
-      color: rgba(255,255,255,.80);
-      white-space:nowrap;
-      line-height: 1.15;
-      font-variant-numeric: tabular-nums;
-      backdrop-filter: blur(10px);
+      display:inline-block;
+      padding: 10px 14px;
+      font-weight:800;
+      font-size: clamp(16px, 1.3vw, 22px);
+      line-height: 1;
+      color: var(--white);
+      text-transform: lowercase;
+      background: transparent;
 
-      font-size: clamp(12px, 1.0vw, 16px);
-      padding: clamp(6px, 0.7vw, 10px) clamp(10px, 1.0vw, 14px);
-    }
-
-    .delayChip.onTime{
-      border-color: rgba(52,211,153,.30);
-      background: rgba(52,211,153,.10);
-      color: rgba(167,243,208,.95);
+      /* na čas default */
+      border: 4px solid var(--dg);
+      box-shadow: 0 5px 0 var(--g);
     }
     .delayChip.late{
-      border-color: rgba(248,113,113,.32);
-      background: rgba(248,113,113,.10);
-      color: rgba(254,202,202,.95);
+      border-color: var(--dr);
+      box-shadow: 0 5px 0 var(--r);
     }
 
+    /* “Vyjdi za” */
     .bigLabel{
-      color: rgba(255,255,255,.75);
-      font-weight: 700;
-      margin-top: 8px;
-      font-size: clamp(13px, 1.0vw, 18px);
+      color: var(--yellow);
+      font-weight:800;
+      text-transform: lowercase;
+      font-size: clamp(26px, 2.4vw, 40px);
+      margin-top: clamp(2px, .6vh, 8px);
     }
 
     .big{
+      color: var(--white);
+      font-weight:800;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(44px, 4.4vw, 86px);
-      line-height: 1.05;
-      font-weight: 900;
-      letter-spacing:-1px;
-      margin: 6px 0 clamp(28px, 3vh, 48px);
-      transform: translateZ(0);
-      will-change: transform, filter, text-shadow;
+      letter-spacing: -1px;
+      font-size: clamp(70px, 6.8vw, 120px);
+      line-height: 1;
+      margin-top: clamp(6px, 1vh, 10px);
     }
 
-    /* jemná “apple” animace když zbývá < 30 s */
-    .big.soon{
-      animation: appleSoon 1.25s ease-in-out infinite;
-      filter: drop-shadow(0 10px 26px rgba(255,255,255,.06));
-      text-shadow: 0 2px 24px rgba(255,255,255,.06);
-    }
-    @keyframes appleSoon{
-      0%{ transform: translateY(0) scale(1); }
-      50%{ transform: translateY(-1px) scale(1.01); }
-      100%{ transform: translateY(0) scale(1); }
+    .divider{
+      height: 4px;
+      background: var(--white);
+      margin-top: clamp(10px, 2vh, 18px);
     }
 
     .sectionTitle{
-      margin-top: 8px;
-      font-weight: 900;
-      letter-spacing: .4px;
-      color: rgba(255,255,255,.92);
-      font-size: clamp(13px, 1.0vw, 18px);
+      color: var(--yellow);
+      font-weight:800;
+      text-transform: lowercase;
+      font-size: clamp(18px, 1.7vw, 28px);
+      margin-top: clamp(14px, 2.2vh, 26px);
     }
 
     .mini{
       display:grid;
-      gap:6px;
-      margin-top:10px;
+      gap: clamp(10px, 1.2vh, 14px);
+      margin-top: clamp(6px, 1vh, 10px);
     }
 
-    /* řádek: headsign + HH:MM + X min */
     .plainRow{
       display:grid;
       grid-template-columns: 1fr auto auto;
+      gap: 18px;
       align-items:center;
-      gap:12px;
-      padding:4px 0;
-      color: rgba(255,255,255,.78);
-      font-size: clamp(13px, 1.05vw, 18px);
-    }
-    .plainRow .at{
-      color: rgba(255,255,255,.68);
-      font-variant-numeric: tabular-nums;
-      font-weight: 750;
-      white-space:nowrap;
-      min-width: clamp(56px, 4vw, 80px);
-      text-align:right;
-    }
-    .plainRow .time{
-      color: rgba(255,255,255,.92);
-      font-variant-numeric: tabular-nums;
-      font-weight: 800;
-      white-space:nowrap;
-      min-width: clamp(56px, 4vw, 90px);
-      text-align:right;
+      font-size: clamp(18px, 1.5vw, 26px);
+      font-weight:800;
+      color: var(--lyellow);
     }
 
+    .plainRow .at,
+    .plainRow .time{
+      font-variant-numeric: tabular-nums;
+      text-align:right;
+      min-width: 90px;
+      color: var(--lyellow);
+    }
+
+    /* BOTTOM */
+    .bottom{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: clamp(10px, 1.3vh, 14px);
+      padding-bottom: clamp(6px, 1vh, 10px);
+    }
+
+    .clockBar{
+      background: var(--db);
+      color: var(--white);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 20px;
+      width: min(760px, 100%);
+      padding: 14px 22px;
+      font-weight:800;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-size: clamp(18px, 1.8vw, 30px);
+      box-shadow: 10px 10px 0 var(--white);
+      border: 6px solid var(--db);
+    }
+
+    .clockLeft{
+      display:flex;
+      align-items:center;
+      gap: 14px;
+      white-space:nowrap;
+    }
+    .dot{
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: var(--white);
+      opacity: .92;
+    }
+    #clock{
+      font-variant-numeric: tabular-nums;
+      opacity: .95;
+    }
+
+    .contact{
+      font-style: italic;
+      font-weight: 650;
+      color: var(--lyellow);
+      font-size: clamp(14px, 1.2vw, 20px);
+      letter-spacing: .2px;
+      text-align:center;
+    }
+
+    /* Zdroj/Stop */
     .footer{
       display:flex;
       justify-content:space-between;
-      gap:12px;
-      color: rgba(255,255,255,.72);
-      font-weight:550;
+      width: 100%;
+      margin-top: clamp(10px, 1.6vh, 18px);
+      color: rgba(35,31,32,.35);
+      font-weight:800;
+      font-size: clamp(14px, 1.1vw, 18px);
       letter-spacing:.3px;
-
-      font-size: clamp(16px, 1.1vw, 24px);
-      padding: clamp(6px, 0.8vw, 12px) clamp(6px, 0.8vw, 12px);
     }
 
-    #metaLeft, #metaRight{ opacity:.9; }
+    /* ======= VYJDI TEĎ: flash + schování pozdějších časů ======= */
+    .card.goNowFlash{
+      transition: background .12s linear;
+    }
+    .card.goNowFlash.flash-green{ background: var(--dg); }
+    .card.goNowFlash.flash-red{ background: var(--dr); }
+    .card.goNowFlash.flash-blue{ background: var(--db); }
 
-    @media (max-width: 900px){
+    /* během flash: labely bílé (jako na mocku) */
+    .card.goNowFlash .dir .label,
+    .card.goNowFlash .bigLabel,
+    .card.goNowFlash .arrivalLabel,
+    .card.goNowFlash .sectionTitle{
+      color: rgba(255,255,255,.95);
+    }
+    .card.goNowFlash .plainRow,
+    .card.goNowFlash .plainRow .at,
+    .card.goNowFlash .plainRow .time{
+      color: rgba(255,255,255,.90);
+    }
+
+    /* schovej pozdější časy během VYJDI TEĎ */
+    .card.hideLater .divider,
+    .card.hideLater .sectionTitle,
+    .card.hideLater .mini{
+      display:none !important;
+    }
+
+    @media (max-width: 980px){
       .grid{ grid-template-columns: 1fr; }
     }
-
-    .card.go-now{
-      animation: glowPulse 1.6s ease-in-out infinite;
-      border-color: rgba(52,211,153,.55);
-    }
-    @keyframes glowPulse{
-      0%{
-        box-shadow:
-          0 0 0 rgba(52,211,153,0),
-          0 18px 60px rgba(0,0,0,.45);
-      }
-      50%{
-        box-shadow:
-          0 0 36px rgba(52,211,153,.38),
-          0 18px 60px rgba(0,0,0,.45);
-      }
-      100%{
-        box-shadow:
-          0 0 0 rgba(52,211,153,0),
-          0 18px 60px rgba(0,0,0,.45);
-      }
-    }
-
-    /* =========================
-       LIGHT MODE (08:00–20:00)
-       ========================= */
-    body.light{
-      --bg1:#f6f7fb;
-      --bg2:#eef1f7;
-
-      --glass: rgba(0,0,0,.06);
-      --glass2: rgba(0,0,0,.04);
-      --stroke: rgba(0,0,0,.10);
-
-      --text: rgba(10,12,18,.92);
-      --muted: rgba(10,12,18,.60);
-
-      --shadow: 0 18px 60px rgba(0,0,0,.12);
-
-      background:
-        radial-gradient(1000px 600px at 20% 20%, rgba(79,70,229,.10), transparent 60%),
-        radial-gradient(900px 500px at 80% 30%, rgba(16,185,129,.08), transparent 55%),
-        radial-gradient(900px 700px at 60% 90%, rgba(56,189,248,.08), transparent 60%),
-        linear-gradient(140deg, var(--bg1), var(--bg2));
-    }
-
-    body.light .title .sub{ color: rgba(10,12,18,.58); }
-
-    body.light .title h1{
-      background: linear-gradient(180deg, rgba(10,12,18,.98), rgba(10,12,18,.72));
-      -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-    }
-
-    body.light .pill{
-      background: rgba(255,255,255,.70);
-      border: 1px solid rgba(0,0,0,.10);
-      color: var(--muted);
-      box-shadow: 0 14px 40px rgba(0,0,0,.14);
-    }
-
-    body.light #clock{ color: rgba(10,12,18,.86); }
-    body.light .arrivalLabel{ color: rgba(10,12,18,.55); }
-    body.light .arrivalTime{ color: rgba(10,12,18,.92); }
-    body.light .sectionTitle{ color: rgba(10,12,18,.88); }
-    body.light .plainRow{ color: rgba(10,12,18,.72); }
-    body.light .plainRow .at{ color: rgba(10,12,18,.60); }
-    body.light .plainRow .time{ color: rgba(10,12,18,.88); }
-    body.light .bigLabel{ color: rgba(10,12,18,.70); }
-    body.light .big{ color: rgba(10,12,18,.94); }
-    body.light .footer{ color: rgba(10,12,18,.62); }
-
-    body.light .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.86), rgba(255,255,255,.62));
-      border: 1px solid rgba(0,0,0,.10);
-      box-shadow: var(--shadow);
-    }
-    body.light .card::before{ opacity:.55; }
-
-    body.light .delayChip{
-      border: 1px solid rgba(0,0,0,.10);
-      background: rgba(10,12,18,.05);
-      color: rgba(10,12,18,.78);
-    }
-
-    body.light .delayChip.onTime{
-      border-color: rgba(52,211,153,.30);
-      background: rgba(52,211,153,.12);
-      color: rgba(11,94,66,.92);
-    }
-    body.light .delayChip.late{
-      border-color: rgba(248,113,113,.28);
-      background: rgba(248,113,113,.14);
-      color: rgba(127,29,29,.92);
-    }
-    /* ===== Posun "POZDĚJŠÍ ČASY PŘÍJEZDU" níž (vyplní prázdno dole) ===== */
-
-/* větší mezera mezi obřím odpočtem a nadpisem sekce */
-.sectionTitle{
-  margin-top: clamp(22px, 4.2vh, 64px) !important;
-}
-
-/* jemně odsuň i samotný seznam od nadpisu */
-.mini{
-  margin-top: clamp(10px, 1.6vh, 20px) !important;
-}
-    /* ===== LEPŠÍ ČITELNOST NA DÁLKU ===== */
-
-/* SMĚR */
-.dir .label{
-  font-size: clamp(18px, 1.4vw, 28px);
-  font-weight: 600;
-  letter-spacing: .4px;
-  opacity: .9;
-}
-
-/* LETŇANY / HÁJE */
-.dir .name{
-  font-size: clamp(34px, 3.2vw, 64px);
-  font-weight: 900;
-  letter-spacing: -.5px;
-}
-
-/* VYJDI ZA */
-.bigLabel{
-  font-size: clamp(18px, 1.4vw, 26px);
-  font-weight: 700;
-  letter-spacing: .4px;
-  margin-top: clamp(10px, 1.2vh, 22px);
-}
   </style>
 </head>
 
 <body>
   <div class="wrap">
+    <div class="corner tl">V</div>
+    <div class="corner tr">Š</div>
+    <div class="corner bl">K</div>
+    <div class="corner br">K</div>
+
     <div class="board">
       <div class="top">
-        <div class="title">
-          <h1>Pražského povstání — Metro C</h1>
-          <div class="sub">Doporučený odchod ze školy (chůze ~ 4 min) • sync dat každých 10 s</div>
-        </div>
-
-        <div class="pill" id="statusPill">
-          <span class="dot" id="statusDot"></span>
-          <span id="statusText">Načítám data…</span>
-          <span id="clock">--:--:--</span>
-        </div>
+        <div class="topBarInner">PRAŽSKÉHO POVSTÁNÍ&nbsp;&nbsp;&nbsp;&nbsp;[METRO C]</div>
       </div>
 
       <div class="grid">
-        <div class="card" id="cardLet">
-          <div class="head">
-            <div class="dir">
-              <div class="label">Směr</div>
-              <div class="name">Letňany</div>
+        <div class="sheet">
+          <div class="card" id="cardLet">
+            <div class="head">
+              <div class="dir">
+                <div class="label">směr</div>
+                <div class="name">Letňany</div>
+              </div>
+              <div class="badgeStack">
+                <div class="arrivalLabel">čas příjezdu</div>
+                <div class="arrivalTime" id="bLet">--:--</div>
+                <div class="delayChip" id="dLet">na čas</div>
+              </div>
             </div>
-            <div class="badgeStack">
-              <div class="arrivalLabel">Čas příjezdu</div>
-              <div class="arrivalTime" id="bLet">--:--</div>
-              <div class="delayChip onTime" id="dLet">na čas</div>
+
+            <div>
+              <div class="bigLabel">vyjdi za</div>
+              <div class="big" id="bigLet">-- min a -- sek</div>
+
+              <div class="divider"></div>
+
+              <div class="sectionTitle">pozdější časy příjezdu</div>
+              <div class="mini" id="listLet">
+                <div class="plainRow"><span>Letňany</span><span class="at">--:--</span><span class="time">-- min</span></div>
+                <div class="plainRow"><span>Letňany</span><span class="at">--:--</span><span class="time">-- min</span></div>
+                <div class="plainRow"><span>Letňany</span><span class="at">--:--</span><span class="time">-- min</span></div>
+              </div>
             </div>
-          </div>
-
-          <div class="bigLabel">Vyjdi za</div>
-          <div class="big" id="bigLet">-- min a -- sek</div>
-
-          <div class="sectionTitle">POZDĚJŠÍ ČASY PŘÍJEZDU</div>
-          <div class="mini" id="listLet">
-            <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
           </div>
         </div>
 
-        <div class="card" id="cardHaje">
-          <div class="head">
-            <div class="dir">
-              <div class="label">Směr</div>
-              <div class="name">Háje</div>
+        <div class="sheet">
+          <div class="card" id="cardHaje">
+            <div class="head">
+              <div class="dir">
+                <div class="label">směr</div>
+                <div class="name">Háje</div>
+              </div>
+              <div class="badgeStack">
+                <div class="arrivalLabel">čas příjezdu</div>
+                <div class="arrivalTime" id="bHaje">--:--</div>
+                <div class="delayChip" id="dHaje">na čas</div>
+              </div>
             </div>
-            <div class="badgeStack">
-              <div class="arrivalLabel">Čas příjezdu</div>
-              <div class="arrivalTime" id="bHaje">--:--</div>
-              <div class="delayChip onTime" id="dHaje">na čas</div>
+
+            <div>
+              <div class="bigLabel">vyjdi za</div>
+              <div class="big" id="bigHaje">-- min a -- sek</div>
+
+              <div class="divider"></div>
+
+              <div class="sectionTitle">pozdější časy příjezdu</div>
+              <div class="mini" id="listHaje">
+                <div class="plainRow"><span>Háje</span><span class="at">--:--</span><span class="time">-- min</span></div>
+                <div class="plainRow"><span>Háje</span><span class="at">--:--</span><span class="time">-- min</span></div>
+                <div class="plainRow"><span>Háje</span><span class="at">--:--</span><span class="time">-- min</span></div>
+              </div>
             </div>
-          </div>
-
-          <div class="bigLabel">Vyjdi za</div>
-          <div class="big" id="bigHaje">-- min a -- sek</div>
-
-          <div class="sectionTitle">POZDĚJŠÍ ČASY PŘÍJEZDU</div>
-          <div class="mini" id="listHaje">
-            <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
           </div>
         </div>
       </div>
 
-      <div class="footer">
-        <div id="metaLeft">Zdroj: Golemio PID</div>
-        <div id="metaRight">STOP: U699Z1P</div>
+      <div class="bottom">
+        <div class="clockBar" id="statusPill">
+          <div class="clockLeft">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">AKTUÁLNÍ ČAS</span>
+          </div>
+          <span id="clock">--:--:--</span>
+        </div>
+
+        <div class="contact">If you have any issues, please contact: david_srbek [IG]</div>
+
+        <div class="footer">
+          <div id="metaLeft">Zdroj: Golemio PID</div>
+          <div id="metaRight">STOP: U699Z1P</div>
+        </div>
       </div>
     </div>
   </div>
@@ -562,7 +487,6 @@
     const REFRESH_MS = 10000;            // sync dat
     const GO_NOW_MAX_SECONDS = 15;       // “VYJDI TEĎ” max 15 s
     const ON_TIME_TOLERANCE_S = 15;      // “na čas” do ±15 s, “zpoždění” od +16 s
-    const SOON_THRESHOLD_S = 30;         // jemná animace < 30 s
 
     const UI = {
       let:  { badge:"bLet",  chip:"dLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
@@ -582,15 +506,8 @@
     function setPill(ok){
       const t = $(UI.statusText);
       const dot = $(UI.statusDot);
-
       if (t) t.textContent = ok ? "AKTUÁLNÍ ČAS" : "CHYBA API";
-
-      if (dot){
-        dot.style.background = ok ? "rgba(52,211,153,.95)" : "rgba(248,113,113,.95)";
-        dot.style.boxShadow = ok
-          ? "0 0 0 6px rgba(52,211,153,.12)"
-          : "0 0 0 6px rgba(248,113,113,.12)";
-      }
+      if (dot) dot.style.opacity = ok ? "0.92" : "0.4";
     }
 
     function tickClock(){
@@ -626,7 +543,7 @@
     }
 
     function formatHHMM(date){
-      if(!date) return "—";
+      if(!date) return "--:--";
       return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
     }
 
@@ -644,12 +561,9 @@
     function renderStatusChip(chipId, delaySec){
       const el = $(chipId);
       if(!el) return;
-
       const isDelay = delaySec >= (ON_TIME_TOLERANCE_S + 1);
       el.textContent = formatDelayText(delaySec);
-
-      el.classList.remove("onTime","late");
-      el.classList.add(isDelay ? "late" : "onTime");
+      el.classList.toggle("late", isDelay);
     }
 
     function pickNextRelevant(deps){
@@ -677,31 +591,78 @@
       el.textContent = formatHHMM(date);
     }
 
-    function renderBig(dir, leaveSec){
-      const el = $(dir.big);
-      const card = $(dir.card);
-      if(!el) return;
+    /* ===== VYJDI TEĎ flash (15 s) + změna barvy každé 3 s ===== */
+    const flashClasses = ["flash-green","flash-red","flash-blue"];
+    const flashSeq = ["flash-green","flash-red","flash-blue"];
 
-      el.classList.remove("soon");
+    const flashState = {
+      let:  { active:false, startTs:0, last:"" },
+      haje: { active:false, startTs:0, last:"" }
+    };
 
-      if(leaveSec === null){
-        el.textContent = "-- min a -- sek";
-        if(card) card.classList.remove("go-now");
+    function startFlash(cardEl, state){
+      if (!cardEl) return;
+      state.active = true;
+      state.startTs = Date.now();
+      state.last = "";
+
+      cardEl.classList.add("goNowFlash","hideLater");
+      for (const c of flashClasses) cardEl.classList.remove(c);
+    }
+
+    function stopFlash(cardEl, state){
+      if (!cardEl) return;
+      state.active = false;
+      state.startTs = 0;
+      state.last = "";
+
+      cardEl.classList.remove("goNowFlash","hideLater");
+      for (const c of flashClasses) cardEl.classList.remove(c);
+    }
+
+    function tickFlash(cardEl, state){
+      if (!state.active || !cardEl) return;
+
+      const elapsed = Date.now() - state.startTs;
+
+      if (elapsed >= GO_NOW_MAX_SECONDS * 1000){
+        stopFlash(cardEl, state);
         return;
       }
 
-      if (leaveSec > 0 && leaveSec < SOON_THRESHOLD_S) el.classList.add("soon");
+      const step = Math.floor(elapsed / 3000) % flashSeq.length;
+      const cls = flashSeq[step];
+
+      if (cls !== state.last){
+        for (const c of flashClasses) cardEl.classList.remove(c);
+        cardEl.classList.add(cls);
+        state.last = cls;
+      }
+    }
+
+    function renderBig(dir, leaveSec){
+      const el = $(dir.big);
+      const card = $(dir.card);
+      const state = (dir === UI.let) ? flashState.let : flashState.haje;
+
+      if(!el) return;
+
+      if(leaveSec === null){
+        el.textContent = "-- min a -- sek";
+        stopFlash(card, state);
+        return;
+      }
 
       if(leaveSec <= 0){
         const over = -leaveSec;
         if(over <= GO_NOW_MAX_SECONDS){
           el.textContent = "VYJDI TEĎ";
-          if(card) card.classList.add("go-now");
+          if (!state.active) startFlash(card, state);
           return;
         }
       }
 
-      if(card) card.classList.remove("go-now");
+      stopFlash(card, state);
 
       const s = Math.max(0, leaveSec);
       const m = Math.floor(s/60);
@@ -709,19 +670,27 @@
       el.textContent = `${m} min a ${pad2(sec)} sek`;
     }
 
+    /* ===== POZDĚJŠÍ ČASY: vždy 3 řádky (doplní placeholder) ===== */
     function renderList(elId, depsAll, selectedDep){
       const el = $(elId);
       if(!el) return;
 
       const now = Date.now();
-
       const future = depsAll
         .map(dep => ({ dep, dt: getDepDate(dep) }))
         .filter(x => x.dt && x.dt.getTime() > now)
         .sort((a,b) => a.dt - b.dt);
 
+      // helper: 3 placeholder řádky
+      const placeholders = (label) => `
+        <div class="plainRow"><span>${label}</span><span class="at">--:--</span><span class="time">-- min</span></div>
+        <div class="plainRow"><span>${label}</span><span class="at">--:--</span><span class="time">-- min</span></div>
+        <div class="plainRow"><span>${label}</span><span class="at">--:--</span><span class="time">-- min</span></div>
+      `;
+
       if(!future.length){
-        el.innerHTML = `<div class="plainRow"><span>Žádná data</span><span class="at">—</span><span class="time">—</span></div>`;
+        const anyName = elId.includes("Let") ? "Letňany" : "Háje";
+        el.innerHTML = placeholders(anyName);
         return;
       }
 
@@ -734,20 +703,28 @@
         }
       }
 
-      const start = (idx >= 0) ? idx + 1 : 1; // pokud nenajde, neskákej na úplně první
+      const start = (idx >= 0) ? idx + 1 : 1;
       const later = future.slice(start, start + 3);
 
-      if(!later.length){
-        el.innerHTML = `<div class="plainRow"><span>Žádná další data</span><span class="at">—</span><span class="time">—</span></div>`;
-        return;
-      }
+      while (later.length < 3) later.push(null);
 
       el.innerHTML = later.map(x=>{
+        if (!x){
+          const label = elId.includes("Let") ? "Letňany" : "Háje";
+          return `
+            <div class="plainRow">
+              <span>${label}</span>
+              <span class="at">--:--</span>
+              <span class="time">-- min</span>
+            </div>`;
+        }
+
         const mins = Math.max(0, Math.floor(diffSeconds(x.dt)/60));
         const hhmm = formatHHMM(x.dt);
+
         return `
           <div class="plainRow">
-            <span>${x.dep?.trip?.headsign || "—"}</span>
+            <span>${x.dep?.trip?.headsign || (elId.includes("Let") ? "Letňany" : "Háje")}</span>
             <span class="at">${hhmm}</span>
             <span class="time">${mins} min</span>
           </div>`;
@@ -801,9 +778,11 @@
 
       renderList(UI.let.list,  depsLet,  nL.dep);
       renderList(UI.haje.list, depsHaje, nH.dep);
+
+      tickFlash($(UI.let.card),  flashState.let);
+      tickFlash($(UI.haje.card), flashState.haje);
     }
 
-    /* ===== Fullscreen: schovej kurzor ===== */
     function applyCursorMode(){
       const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
       document.body.style.cursor = isFs ? "none" : "";
@@ -811,23 +790,6 @@
     document.addEventListener("fullscreenchange", applyCursorMode);
     document.addEventListener("webkitfullscreenchange", applyCursorMode);
     applyCursorMode();
-
-    /* ===== Auto theme: 08:00–20:00 light, jinak dark ===== */
-    function applyThemeByTime(){
-      const d = new Date();
-      const h = d.getHours();
-      const m = d.getMinutes();
-
-      // light: 08:00–20:00 (včetně 20:00), od 20:01 už dark
-      const isLight =
-        (h > 8 && h < 20) ||
-        (h === 8 && m >= 0) ||
-        (h === 20 && m === 0);
-
-      document.body.classList.toggle("light", isLight);
-    }
-    applyThemeByTime();
-    setInterval(applyThemeByTime, 30 * 1000);
 
     // START
     setPill(true);
@@ -838,7 +800,7 @@
     setInterval(loadDepartures, REFRESH_MS);
 
     realtimeUpdate();
-    setInterval(realtimeUpdate, 1000);
+    setInterval(realtimeUpdate, 250);
   </script>
 </body>
 </html>
