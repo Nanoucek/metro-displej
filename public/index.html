@@ -26,40 +26,33 @@
     }
 
     :root{
-      /* ===== BARVY (přesně dle zadání) ===== */
-      --yellow: #fdc40a;       /* background + nadpisy */
-      --lightYellow: #feeabf;  /* řádky pozdějších časů + footer text */
-      --darkGrey: #231f20;     /* tabule */
+      /* ===== BARVY ===== */
+      --yellow: #fdc40a;
+      --lightYellow: #feeabf;
+      --darkGrey: #231f20;
 
-      --dg: #33a86f;           /* Dark Green (chip border na čas + vyjdi teď anim) */
-      --g:  #c5e1cf;           /* Green (chip shadow na čas) */
+      --dg: #33a86f;
+      --g:  #c5e1cf;
 
-      --dr: #f36f42;           /* Dark Red (chip border zpoždění + vyjdi teď anim + header border) */
-      --r:  #fcd0b9;           /* Red (chip shadow zpoždění) */
+      --dr: #f36f42;
+      --r:  #fcd0b9;
 
-      --db: #5a73b8;           /* Dark Blue (rámeček AKTUÁLNÍ ČAS + vyjdi teď anim) */
+      --db: #5a73b8;
       --white: #ffffff;
 
-      /* ===== ROHY VŠKK (insety od okraje žlutého pozadí) ===== */
-      --cornerLT-x: 88.68px;  --cornerLT-y: 72.32px;
-      --cornerRT-x: 186.00px; --cornerRT-y: 62.81px;
-      --cornerLB-x: 74.68px;  --cornerLB-y: 243.41px;
-      --cornerRB-x: 194.97px; --cornerRB-y: 240.95px;
+      /* ===== rozvržení ===== */
+      --pad: clamp(34px, 2.4vw, 90px);
+      --gap: clamp(26px, 1.7vw, 56px);
 
-      /* ===== rozvržení (responzivní) ===== */
-      --pad: clamp(36px, 2.6vw, 88px);
-      --gap: clamp(26px, 1.8vw, 56px);
-      --radiusBoard: 0px; /* 1:1 – tabule jako blok (bez glass) */
-      --shadowOffsetX: clamp(10px, 1.1vw, 36px);
-      --shadowOffsetY: clamp(14px, 1.6vw, 54px);
+      /* stín “papíru” (jen lehce) */
+      --shadowOffsetX: clamp(10px, 1.1vw, 34px);
+      --shadowOffsetY: clamp(14px, 1.6vw, 50px);
 
-      /* šířka/ výška a proporce karty (tabule) */
       --boardMinH: clamp(720px, 52vh, 1250px);
     }
 
     *{ box-sizing:border-box; }
 
-    /* disable scroll */
     html,body{
       height:100%;
       margin:0;
@@ -72,7 +65,6 @@
       color: var(--white);
     }
 
-    /* kurzor zmizí jen ve fullscreen */
     :fullscreen { cursor: none !important; }
     :-webkit-full-screen { cursor: none !important; }
 
@@ -83,8 +75,8 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      background: var(--yellow);
       position: relative;
+      background: var(--yellow);
     }
 
     .board{
@@ -93,35 +85,38 @@
       max-width: 3200px;
       max-height: 1700px;
       display:grid;
-      grid-template-rows: auto 1fr auto;
+      grid-template-rows: auto 1fr auto auto;
       gap: clamp(18px, 2vh, 44px);
       position: relative;
     }
 
-    /* ===== ROHY VŠKK ===== */
+    /* =========================
+       ROHY VŠKK (jako na 2. obrázku – velké a u okrajů)
+       ========================= */
     .cornerMark{
       position:absolute;
-      z-index: 30;
+      z-index: 40;
       color: var(--white);
       line-height:1;
       user-select:none;
       pointer-events:none;
       font-weight: 700;
       letter-spacing: .06em;
-      font-size: clamp(24px, 1.6vw, 44px);
-      text-shadow: 0 2px 0 rgba(0,0,0,.20);
+      font-size: clamp(72px, 7vw, 150px);
+      text-shadow: 0 2px 0 rgba(0,0,0,.18);
+      opacity: 1;
     }
-    .cornerMark.lt{ left: var(--cornerLT-x); top: var(--cornerLT-y); }
-    .cornerMark.rt{ right: var(--cornerRT-x); top: var(--cornerRT-y); }
-    .cornerMark.lb{ left: var(--cornerLB-x); bottom: var(--cornerLB-y); }
-    .cornerMark.rb{ right: var(--cornerRB-x); bottom: var(--cornerRB-y); }
+    .cornerMark.lt{ left: clamp(6px, 1.2vw, 20px); top: clamp(6px, 1.2vw, 20px); }
+    .cornerMark.rt{ right: clamp(6px, 1.2vw, 20px); top: clamp(6px, 1.2vw, 20px); }
+    .cornerMark.lb{ left: clamp(6px, 1.2vw, 20px); bottom: clamp(6px, 1.2vw, 20px); }
+    .cornerMark.rb{ right: clamp(6px, 1.2vw, 20px); bottom: clamp(6px, 1.2vw, 20px); }
 
     /* =========================
-       HEADER (červený pruh + bílý stín)
+       HEADER (oranžový pruh + bílý stín) – jako na 2. obrázku
        ========================= */
     .headerWrap{
       position: relative;
-      height: clamp(84px, 7vh, 170px);
+      height: clamp(86px, 7vh, 170px);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -137,13 +132,11 @@
     .headerShadow{
       transform: translate(var(--shadowOffsetX), var(--shadowOffsetY));
       background: var(--white);
-      opacity: 1;
     }
     .headerBar{
-      background: var(--darkGrey);
-      border: clamp(3px, .35vw, 10px) solid var(--dr);
+      background: var(--dr);      /* ✅ oranžová */
+      border: none;              /* ✅ bez rámečku */
     }
-
     .headerText{
       position: relative;
       z-index: 2;
@@ -153,7 +146,7 @@
       font-weight: 700;
       letter-spacing: .06em;
       text-transform: uppercase;
-      font-size: clamp(26px, 2.2vw, 54px);
+      font-size: clamp(28px, 2.5vw, 60px);
       line-height: 1.05;
       white-space: nowrap;
       overflow: hidden;
@@ -161,7 +154,7 @@
     }
 
     /* =========================
-       GRID tabulí (2 ks) + bílé “papíry” pod nimi
+       GRID tabulí
        ========================= */
     .grid{
       height:100%;
@@ -178,7 +171,7 @@
       min-height: var(--boardMinH);
     }
 
-    /* bílý papír pod tabulí */
+    /* bílý “papír” pod tabulí */
     .cardWrap::before{
       content:"";
       position:absolute;
@@ -188,25 +181,23 @@
       z-index: 0;
     }
 
-    /* samotná tabule */
     .card{
       position:absolute;
       inset: 0;
       background: var(--darkGrey);
-      border-radius: var(--radiusBoard);
       z-index: 1;
-      padding: clamp(26px, 2vw, 48px);
+      padding: clamp(26px, 2.2vw, 56px);
       display:flex;
       flex-direction:column;
       min-height:0;
     }
 
-    /* bílá čára (strip) – 1:1 blok */
+    /* tenká linka (jako ve vzoru) */
     .strip{
       width: 100%;
-      height: clamp(6px, .6vh, 12px);
+      height: clamp(3px, .35vh, 7px);
       background: var(--white);
-      margin: clamp(10px, 1.2vh, 22px) 0 clamp(14px, 1.6vh, 28px);
+      margin: clamp(18px, 2.0vh, 34px) 0 clamp(18px, 2.0vh, 34px);
       opacity: 1;
     }
 
@@ -215,7 +206,6 @@
       justify-content:space-between;
       align-items:flex-start;
       gap: clamp(18px, 2vw, 40px);
-      min-height:0;
     }
 
     .dir{
@@ -225,20 +215,19 @@
       min-width:0;
     }
 
-    /* žluté popisky */
     .dir .label{
       color: var(--yellow);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: clamp(20px, 1.55vw, 34px);
+      text-transform: lowercase; /* ✅ „směr“ jako na 2. obrázku */
+      letter-spacing: .02em;
+      font-size: clamp(22px, 1.6vw, 38px);
       line-height: 1;
     }
     .dir .name{
       color: var(--white);
       font-weight: 700;
       letter-spacing: .02em;
-      font-size: clamp(44px, 3.2vw, 86px);
+      font-size: clamp(52px, 3.6vw, 96px);
       line-height: 1.02;
       white-space: nowrap;
       overflow:hidden;
@@ -249,15 +238,15 @@
       display:flex;
       flex-direction:column;
       align-items:flex-end;
-      gap: clamp(12px, 1.2vh, 22px);
+      gap: clamp(10px, 1.2vh, 18px);
       flex: 0 0 auto;
     }
 
     .arrivalLabel{
       color: var(--yellow);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
+      text-transform: lowercase; /* ✅ „čas příjezdu“ */
+      letter-spacing: .02em;
       font-size: clamp(18px, 1.25vw, 30px);
       line-height: 1;
     }
@@ -266,58 +255,58 @@
       font-weight: 700;
       letter-spacing: .08em;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(42px, 2.7vw, 76px);
+      font-size: clamp(42px, 3.0vw, 86px);
       line-height: 1.02;
     }
 
-    /* chip */
+    /* chip menší a více „flat“ */
     .delayChip{
-      border-radius: 999px;
-      background: transparent;
+      border-radius: 6px;          /* ✅ ve vzoru je to spíš ploché */
+      background: var(--dg);
       color: var(--white);
       font-weight: 700;
-      letter-spacing: .06em;
+      letter-spacing: .04em;
       font-variant-numeric: tabular-nums;
-      text-transform: uppercase;
-      font-size: clamp(16px, 1.1vw, 26px);
-      padding: clamp(10px, 1.0vh, 16px) clamp(16px, 1.4vw, 26px);
-      border: clamp(3px, .35vw, 10px) solid var(--dg);
-      box-shadow: 0 0 0 clamp(4px, .6vw, 14px) var(--g);
+      text-transform: lowercase;
+      font-size: clamp(14px, 1.0vw, 22px);
+      padding: clamp(6px, .7vh, 12px) clamp(10px, 1.0vw, 18px);
+      border: none;
+      box-shadow: none;
       white-space: nowrap;
     }
     .delayChip.late{
-      border-color: var(--dr);
-      box-shadow: 0 0 0 clamp(4px, .6vw, 14px) var(--r);
+      background: var(--dr);
     }
 
     /* Vyjdi za */
     .bigLabel{
-      margin-top: clamp(18px, 1.8vh, 34px);
+      margin-top: clamp(10px, 1.4vh, 22px);
       color: var(--yellow);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: clamp(20px, 1.55vw, 34px);
+      text-transform: lowercase; /* ✅ „vyjdi za“ */
+      letter-spacing: .02em;
+      font-size: clamp(26px, 2.0vw, 44px);
       line-height: 1;
     }
 
+    /* ve vzoru je velké HH:MM / 00:00 (flat) */
     .big{
-      margin: clamp(12px, 1.2vh, 22px) 0 clamp(34px, 3.4vh, 70px);
+      margin: clamp(10px, 1.2vh, 18px) 0 clamp(22px, 2.6vh, 44px);
       color: var(--white);
       font-weight: 700;
       letter-spacing: .06em;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(56px, 4.2vw, 120px);
+      font-size: clamp(86px, 6.2vw, 170px);
       line-height: 1.02;
       transform: translateZ(0);
       will-change: transform, filter, text-shadow;
     }
 
-    /* jemná “apple” animace když zbývá < 30 s (ponecháno) */
+    /* jemná animace když zbývá < 30 s */
     .big.soon{
       animation: appleSoon 1.25s ease-in-out infinite;
-      filter: drop-shadow(0 10px 26px rgba(255,255,255,.08));
-      text-shadow: 0 2px 24px rgba(255,255,255,.10);
+      filter: drop-shadow(0 10px 26px rgba(255,255,255,.06));
+      text-shadow: 0 2px 20px rgba(255,255,255,.08);
     }
     @keyframes appleSoon{
       0%{ transform: translateY(0) scale(1); }
@@ -325,14 +314,14 @@
       100%{ transform: translateY(0) scale(1); }
     }
 
-    /* Pozdější časy */
+    /* Pozdější časy – ve vzoru je to jen text, bez béžových boxů */
     .sectionTitle{
       color: var(--yellow);
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      font-size: clamp(18px, 1.25vw, 30px);
-      margin-top: clamp(10px, 1vh, 18px);
+      text-transform: lowercase;  /* ✅ „pozdější časy příjezdu“ */
+      letter-spacing: .02em;
+      font-size: clamp(20px, 1.4vw, 34px);
+      margin-top: clamp(2px, .3vh, 10px);
       line-height: 1;
     }
 
@@ -344,54 +333,65 @@
     }
 
     .plainRow{
-      background: var(--lightYellow);
-      color: var(--darkGrey);
+      background: transparent;      /* ✅ bez boxu */
+      color: var(--lightYellow);    /* ✅ světlý text */
       display:grid;
       grid-template-columns: 1fr auto auto;
       align-items:center;
       gap: clamp(12px, 1.2vw, 26px);
-      padding: clamp(12px, 1.2vh, 20px) clamp(16px, 1.4vw, 28px);
-      font-size: clamp(18px, 1.2vw, 28px);
+      padding: 0;                  /* ✅ jen text */
+      font-size: clamp(18px, 1.25vw, 30px);
       font-weight: 700;
       letter-spacing: .02em;
     }
+
     .plainRow .at,
     .plainRow .time{
       font-variant-numeric: tabular-nums;
-      font-weight: 700;
       text-align:right;
       white-space:nowrap;
-      min-width: clamp(84px, 6vw, 140px);
+      min-width: clamp(92px, 6vw, 150px);
+      color: var(--lightYellow);
     }
 
-    /* při VYJDI TEĎ: schovej pozdější časy (15 s) */
+    /* při VYJDI TEĎ: schovej pozdější časy */
     .card.go-now .sectionTitle,
     .card.go-now .mini{
       display:none !important;
     }
 
-    /* VYJDI TEĎ: cyklení barvy tabule po 3 s (green -> red -> blue), běží po dobu go-now */
+    /* VYJDI TEĎ: cyklení barvy tabule */
     .card.go-now{
       animation: boardCycle 3s linear infinite;
     }
     @keyframes boardCycle{
-      0%, 33%{
-        box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--dg);
-      }
-      33.01%, 66%{
-        box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--dr);
-      }
-      66.01%, 100%{
-        box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--db);
-      }
+      0%, 33%{ box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--dg); }
+      33.01%, 66%{ box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--dr); }
+      66.01%, 100%{ box-shadow: 0 0 0 clamp(3px,.35vw,10px) var(--db); }
     }
 
     /* =========================
-       SPODNÍ MODRÝ PRUH (AKTUÁLNÍ ČAS) + bílý stín
+       FOOTER (malý text)
+       ========================= */
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      color: rgba(255,255,255,.75);
+      font-weight: 700;
+      letter-spacing: .02em;
+      font-size: clamp(14px, .95vw, 22px);
+      padding: 0 clamp(4px, .5vw, 10px);
+      margin-top: clamp(2px, .4vh, 10px);
+      opacity: 1;
+    }
+
+    /* =========================
+       SPODNÍ MODRÝ PRUH (jako ve vzoru: bez tečky)
        ========================= */
     .statusWrap{
       position: relative;
-      height: clamp(64px, 6vh, 130px);
+      height: clamp(70px, 6.5vh, 140px);
       display:flex;
       align-items:center;
       justify-content:center;
@@ -401,11 +401,12 @@
     .pill{
       position:absolute;
       height:100%;
-      width: min(62vw, 1500px);
+      width: min(62vw, 1600px);
       left: 50%;
       transform: translateX(-50%);
       border-radius: 0;
     }
+
     .statusShadow{
       transform: translate(calc(-50% + var(--shadowOffsetX)), var(--shadowOffsetY));
       background: var(--white);
@@ -415,52 +416,34 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      gap: clamp(14px, 1.2vw, 26px);
+      gap: clamp(28px, 2.4vw, 56px);
 
-      background: var(--darkGrey);
-      border: clamp(3px, .35vw, 10px) solid var(--db);
+      background: var(--db);     /* ✅ modrá výplň */
+      border: none;             /* ✅ bez rámečku */
       color: var(--white);
       padding: 0 clamp(18px, 2vw, 42px);
-    }
-
-    .dot{
-      width: clamp(12px, 1.0vw, 18px);
-      height: clamp(12px, 1.0vw, 18px);
-      border-radius: 999px;
-      background: var(--white);
     }
 
     #statusText{
       font-weight: 700;
       letter-spacing: .08em;
       text-transform: uppercase;
-      font-size: clamp(18px, 1.25vw, 30px);
+      font-size: clamp(24px, 1.8vw, 44px);
+      white-space: nowrap;
     }
 
     #clock{
       font-weight: 700;
       letter-spacing: .10em;
       font-variant-numeric: tabular-nums;
-      font-size: clamp(20px, 1.4vw, 34px);
+      font-size: clamp(24px, 1.9vw, 46px);
+      white-space: nowrap;
     }
 
-    /* footer (kontakty) */
-    .footer{
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      color: var(--lightYellow);
-      font-weight: 700;
-      letter-spacing: .02em;
-      font-size: clamp(18px, 1.1vw, 28px);
-      padding: 0 clamp(4px, .5vw, 10px);
-      margin-top: clamp(6px, .8vh, 14px);
-      opacity: 1;
-    }
-
+    /* mobil */
     @media (max-width: 1100px){
       .grid{ grid-template-columns: 1fr; }
-      .statusShadow, .pill{ width: min(86vw, 1500px); }
+      .statusShadow, .pill{ width: min(86vw, 1600px); }
     }
   </style>
 </head>
@@ -479,7 +462,7 @@
       <div class="headerWrap">
         <div class="headerShadow"></div>
         <div class="headerBar"></div>
-        <div class="headerText">PRAŽSKÉHO POVSTÁNÍ&nbsp;&nbsp;[ METRO C ]</div>
+        <div class="headerText">PRAŽSKÉHO POVSTÁNÍ&nbsp;&nbsp;&nbsp;[METRO C]</div>
       </div>
 
       <!-- 2 TABULE -->
@@ -490,12 +473,12 @@
           <div class="card" id="cardLet">
             <div class="head">
               <div class="dir">
-                <div class="label">Směr</div>
+                <div class="label">směr</div>
                 <div class="name">Letňany</div>
               </div>
 
               <div class="badgeStack">
-                <div class="arrivalLabel">Čas příjezdu</div>
+                <div class="arrivalLabel">čas příjezdu</div>
                 <div class="arrivalTime" id="bLet">--:--</div>
                 <div class="delayChip onTime" id="dLet">na čas</div>
               </div>
@@ -503,10 +486,12 @@
 
             <div class="strip"></div>
 
-            <div class="bigLabel">Vyjdi za</div>
-            <div class="big" id="bigLet">-- min a -- sek</div>
+            <div class="bigLabel">vyjdi za</div>
+            <div class="big" id="bigLet">--:--</div>
 
-            <div class="sectionTitle">Pozdější časy příjezdu</div>
+            <div class="strip"></div>
+
+            <div class="sectionTitle">pozdější časy příjezdu</div>
             <div class="mini" id="listLet">
               <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
             </div>
@@ -518,12 +503,12 @@
           <div class="card" id="cardHaje">
             <div class="head">
               <div class="dir">
-                <div class="label">Směr</div>
+                <div class="label">směr</div>
                 <div class="name">Háje</div>
               </div>
 
               <div class="badgeStack">
-                <div class="arrivalLabel">Čas příjezdu</div>
+                <div class="arrivalLabel">čas příjezdu</div>
                 <div class="arrivalTime" id="bHaje">--:--</div>
                 <div class="delayChip onTime" id="dHaje">na čas</div>
               </div>
@@ -531,10 +516,12 @@
 
             <div class="strip"></div>
 
-            <div class="bigLabel">Vyjdi za</div>
-            <div class="big" id="bigHaje">-- min a -- sek</div>
+            <div class="bigLabel">vyjdi za</div>
+            <div class="big" id="bigHaje">--:--</div>
 
-            <div class="sectionTitle">Pozdější časy příjezdu</div>
+            <div class="strip"></div>
+
+            <div class="sectionTitle">pozdější časy příjezdu</div>
             <div class="mini" id="listHaje">
               <div class="plainRow"><span>Načítám…</span><span class="at">—</span><span class="time">—</span></div>
             </div>
@@ -543,20 +530,19 @@
 
       </div>
 
-      <!-- FOOTER -->
-      <div class="footer">
-        <div id="metaLeft">If you have any issues, please contact: david_srbek [IG]</div>
-        <div id="metaRight">STOP: U699Z1P</div>
-      </div>
-
       <!-- SPODNÍ MODRÝ PRUH -->
       <div class="statusWrap">
         <div class="statusShadow"></div>
         <div class="pill" id="statusPill">
-          <span class="dot" id="statusDot"></span>
           <span id="statusText">AKTUÁLNÍ ČAS</span>
           <span id="clock">--:--:--</span>
         </div>
+      </div>
+
+      <!-- FOOTER -->
+      <div class="footer">
+        <div id="metaLeft">If you have any issues, please contact: david_srbek [IG]</div>
+        <div id="metaRight">STOP: U699Z1P</div>
       </div>
 
     </div>
@@ -574,7 +560,6 @@
       let:  { badge:"bLet",  chip:"dLet",  big:"bigLet",  list:"listLet",  card:"cardLet"  },
       haje: { badge:"bHaje", chip:"dHaje", big:"bigHaje", list:"listHaje", card:"cardHaje" },
       statusText:"statusText",
-      statusDot:"statusDot",
       clock:"clock"
     };
 
@@ -584,14 +569,6 @@
     let depsHaje = [];
 
     function pad2(n){ return String(n).padStart(2,"0"); }
-
-    function setPill(ok){
-      const t = $(UI.statusText);
-      const dot = $(UI.statusDot);
-
-      if (t) t.textContent = ok ? "AKTUÁLNÍ ČAS" : "CHYBA API";
-      if (dot) dot.style.opacity = ok ? "1" : ".55";
-    }
 
     function tickClock(){
       const el = $(UI.clock);
@@ -631,9 +608,6 @@
     }
 
     function formatDelayText(delaySec){
-      // “dřív” nikdy nepsat
-      // “na čas” do ±15 s
-      // “zpoždění” až od +16 s
       if (delaySec >= (ON_TIME_TOLERANCE_S + 1)) {
         const s = delaySec;
         const m = Math.floor(s / 60);
@@ -689,7 +663,7 @@
       card.classList.remove("go-now");
 
       if(leaveSec === null){
-        el.textContent = "-- min a -- sek";
+        el.textContent = "--:--";
         return;
       }
 
@@ -699,7 +673,7 @@
         const over = -leaveSec;
         if(over <= GO_NOW_MAX_SECONDS){
           el.textContent = "VYJDI TEĎ";
-          card.classList.add("go-now"); // ✅ schová pozdější časy + spustí cyklus barev
+          card.classList.add("go-now");
           return;
         }
       }
@@ -707,7 +681,9 @@
       const s = Math.max(0, leaveSec);
       const m = Math.floor(s/60);
       const sec = s % 60;
-      el.textContent = `${m} min a ${pad2(sec)} sek`;
+
+      /* ✅ VZOR: velké “MM:SS” */
+      el.textContent = `${pad2(m)}:${pad2(sec)}`;
     }
 
     function renderList(elId, depsAll, selectedDep){
@@ -757,8 +733,6 @@
 
     async function loadDepartures(){
       try{
-        setPill(true);
-
         const res = await fetch(`/api/departures?name=${encodeURIComponent(STOP_NAME)}`, { cache:"no-store" });
         const json = await res.json();
 
@@ -781,7 +755,6 @@
 
       }catch(e){
         console.error(e);
-        setPill(false);
         depsLet = [];
         depsHaje = [];
       }
@@ -804,7 +777,7 @@
       renderList(UI.haje.list, depsHaje, nH.dep);
     }
 
-    /* ===== Fullscreen: schovej kurzor ===== */
+    /* Fullscreen: schovej kurzor */
     function applyCursorMode(){
       const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
       document.body.style.cursor = isFs ? "none" : "";
@@ -814,7 +787,6 @@
     applyCursorMode();
 
     // START
-    setPill(true);
     tickClock();
     setInterval(tickClock, 1000);
 
